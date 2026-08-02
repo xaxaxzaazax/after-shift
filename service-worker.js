@@ -1,4 +1,4 @@
-const CACHE_NAME = "after-shift-v5";
+const CACHE_NAME = "after-shift-v6";
 const APP_FILES = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest", "./icon.svg", "./icon-180.png", "./icon-192.png", "./icon-512.png", "./googleicon.webp"];
 
 self.addEventListener("install", (event) => {

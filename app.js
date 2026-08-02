@@ -443,14 +443,18 @@ $("#closeInfoButton").addEventListener("click", () => elements.infoDialog.close(
 $("#gotItButton").addEventListener("click", () => elements.infoDialog.close());
 elements.clearButton.addEventListener("click", clearEntries);
 
-const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-if (sessionError) elements.authError.textContent = sessionError.message;
-await applySession(session);
+async function initialize() {
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) elements.authError.textContent = sessionError.message;
+  await applySession(session);
 
-supabase.auth.onAuthStateChange((event, nextSession) => {
-  if (event === "INITIAL_SESSION") return;
-  setTimeout(() => applySession(nextSession), 0);
-});
+  supabase.auth.onAuthStateChange((event, nextSession) => {
+    if (event === "INITIAL_SESSION") return;
+    setTimeout(() => applySession(nextSession), 0);
+  });
+}
+
+initialize();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js"));
