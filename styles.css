@@ -12,6 +12,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
@@ -27,6 +28,49 @@ body {
 button, input { font: inherit; }
 button { color: inherit; }
 
+.auth-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: calc(env(safe-area-inset-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 24px);
+}
+
+.auth-card {
+  width: min(100%, 430px);
+  padding: 38px 28px 30px;
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  background: rgba(255, 253, 248, 0.88);
+  box-shadow: 0 24px 70px rgba(36, 89, 75, 0.12);
+  text-align: center;
+}
+
+.auth-mark {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  margin: 0 auto 24px;
+  border-radius: 20px;
+  background: var(--green);
+  box-shadow: 0 13px 28px rgba(36, 89, 75, 0.2);
+  color: white;
+  font-family: Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  transform: rotate(-4deg);
+}
+
+.auth-card h1 { max-width: 350px; margin: 0 auto 13px; font-size: clamp(2rem, 9vw, 2.65rem); line-height: 1.02; }
+.auth-copy { max-width: 330px; margin: 0 auto 28px; color: var(--muted); font-size: .9rem; line-height: 1.55; }
+.auth-actions { display: grid; gap: 11px; }
+.oauth-button { display: flex; min-height: 54px; align-items: center; justify-content: center; gap: 11px; border: 1px solid var(--line); border-radius: 16px; font-weight: 750; cursor: pointer; }
+.oauth-button:disabled { opacity: .55; cursor: wait; }
+.google-button { background: white; color: #303030; }
+.google-mark { width: 20px; height: 20px; object-fit: contain; }
+.auth-error { min-height: 18px; margin: 14px 0 0; color: #ac3d2b; font-size: .75rem; line-height: 1.4; }
+.privacy-note { margin: 12px auto 0; color: var(--muted); font-size: .68rem; line-height: 1.45; }
+
 .app-shell {
   width: min(100%, 540px);
   min-height: 100vh;
@@ -39,6 +83,10 @@ button { color: inherit; }
   align-items: center;
   justify-content: space-between;
 }
+
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.sign-out-button { border: 0; background: transparent; color: var(--muted); font-size: .7rem; font-weight: 700; cursor: pointer; }
+.sync-status { margin: 14px 0 -10px; padding: 9px 12px; border-radius: 12px; background: var(--green-light); color: var(--green); font-size: .72rem; text-align: center; }
 
 .eyebrow {
   margin: 0 0 4px;

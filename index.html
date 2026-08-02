@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://vlddrxazjjtqdxoqlcwr.supabase.co wss://vlddrxazjjtqdxoqlcwr.supabase.co https://cdn.jsdelivr.net; img-src 'self' data:; style-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <meta name="referrer" content="no-referrer" />
     <meta name="theme-color" content="#f4efe5" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -15,14 +17,36 @@
     <title>After Shift</title>
   </head>
   <body>
-    <main class="app-shell">
+    <main class="auth-shell" id="authView">
+      <section class="auth-card" aria-labelledby="authHeading">
+        <div class="auth-mark">AS</div>
+        <p class="eyebrow">AFTER SHIFT</p>
+        <h1 id="authHeading">Your shifts, wherever you sign in.</h1>
+        <p class="auth-copy">Sign in with Google to securely save your shifts and see them on any device.</p>
+        <div class="auth-actions">
+          <button class="oauth-button google-button" id="googleLoginButton" type="button">
+            <img class="google-mark" src="googleicon.webp" alt="" />
+            Continue with Google
+          </button>
+        </div>
+        <p id="authError" class="auth-error" role="alert"></p>
+        <p class="privacy-note">We only use your login to keep your shift records connected to you.</p>
+      </section>
+    </main>
+
+    <main class="app-shell" id="appView" hidden>
       <header class="topbar">
         <div>
           <p class="eyebrow" id="todayLabel"></p>
           <h1>After Shift</h1>
         </div>
-        <button class="icon-button" id="infoButton" type="button" aria-label="About this app">?</button>
+        <div class="topbar-actions">
+          <button class="sign-out-button" id="signOutButton" type="button">Sign out</button>
+          <button class="icon-button" id="infoButton" type="button" aria-label="About this app">?</button>
+        </div>
       </header>
+
+      <p class="sync-status" id="syncStatus" role="status" hidden></p>
 
       <section class="hero-card" aria-labelledby="weekHeading">
         <div class="hero-topline">
@@ -79,7 +103,7 @@
       </section>
     </main>
 
-    <div class="bottom-action">
+    <div class="bottom-action" id="bottomAction" hidden>
       <button class="add-button" id="addButton" type="button"><span>+</span> Add shift</button>
     </div>
 
@@ -128,12 +152,13 @@
         <button class="close-button" id="closeInfoButton" type="button" aria-label="Close">×</button>
         <div class="info-mark">AS</div>
         <h2>Made for your shifts.</h2>
-        <p>Your entries stay private in this browser and are available offline after your first visit.</p>
+        <p>Your entries are securely tied to your login and protected so only you can access them.</p>
         <p>On iPhone, tap <strong>Share</strong>, then <strong>Add to Home Screen</strong> to use it like an app.</p>
         <button class="save-button" id="gotItButton" type="button">Got it</button>
       </div>
     </dialog>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0/dist/umd/supabase.min.js" integrity="sha384-fPWur1rx/DE6YtXP/x0MD6dd90RgnVsz5yX/DIg7CcVAnTBZsENWuIcpvVTM39ti" crossorigin="anonymous" defer></script>
     <script src="app.js" defer></script>
   </body>
 </html>
