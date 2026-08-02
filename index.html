@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f4efe5" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="After Shift" />
+    <meta name="description" content="A private shift and tip tracker." />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon-180.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>After Shift</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="todayLabel"></p>
+          <h1>After Shift</h1>
+        </div>
+        <button class="icon-button" id="infoButton" type="button" aria-label="About this app">?</button>
+      </header>
+
+      <section class="hero-card" aria-labelledby="weekHeading">
+        <div class="hero-topline">
+          <div class="week-nav" aria-label="Choose week">
+            <button id="previousWeekButton" type="button" aria-label="Show previous week">‹</button>
+            <p id="weekHeading" aria-live="polite">This week</p>
+            <button id="nextWeekButton" type="button" aria-label="Show next week" disabled>›</button>
+          </div>
+          <span id="shiftCount">0 shifts</span>
+        </div>
+        <p class="hero-amount" id="weekTakeHome">$0.00</p>
+        <p class="hero-caption">walking home with</p>
+        <div class="progress-track" aria-hidden="true"><span id="weekProgress"></span></div>
+        <p class="week-range" id="weekRange"></p>
+      </section>
+
+      <section class="metrics" aria-label="This week's totals">
+        <article class="metric-card">
+          <span class="metric-icon sales-icon">↗</span>
+          <p>Total sales</p>
+          <strong id="weekSales">$0</strong>
+        </article>
+        <article class="metric-card">
+          <span class="metric-icon tips-icon">$</span>
+          <p>Total tips</p>
+          <strong id="weekTips">$0</strong>
+        </article>
+        <article class="metric-card">
+          <span class="metric-icon out-icon">↘</span>
+          <p>Tip out</p>
+          <strong id="weekTipOut">$0</strong>
+        </article>
+        <article class="metric-card">
+          <span class="metric-icon rate-icon">%</span>
+          <p>Tip percentages</p>
+          <div class="rate-pair">
+            <span><strong id="weekTipRate">0.0%</strong> tips</span>
+            <span><strong id="weekTipOutRate">0.0%</strong> out</span>
+          </div>
+        </article>
+      </section>
+
+      <section class="history-section">
+        <div class="section-heading">
+          <h2>Weekly history</h2>
+          <button id="clearButton" class="text-button" type="button" hidden>Clear all</button>
+        </div>
+        <div id="emptyState" class="empty-state">
+          <div class="empty-mark">$</div>
+          <h3>Your shifts will live here</h3>
+          <p>Add your first shift to start tracking what you take home each week.</p>
+        </div>
+        <div id="shiftList" class="shift-list"></div>
+      </section>
+    </main>
+
+    <div class="bottom-action">
+      <button class="add-button" id="addButton" type="button"><span>+</span> Add shift</button>
+    </div>
+
+    <dialog id="shiftDialog" class="sheet">
+      <form id="shiftForm" method="dialog">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="sheet-heading">
+          <div>
+            <p class="eyebrow">SHIFT DETAILS</p>
+            <h2>How did tonight go?</h2>
+          </div>
+          <button class="close-button" id="closeButton" type="button" aria-label="Close">×</button>
+        </div>
+
+        <label class="date-field">
+          <span>Date</span>
+          <input id="shiftDate" name="date" type="date" required />
+        </label>
+
+        <div class="money-fields">
+          <label>
+            <span>Total sales</span>
+            <div class="money-input"><b>$</b><input id="salesInput" name="sales" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off" required /></div>
+          </label>
+          <label>
+            <span>Total tips</span>
+            <div class="money-input"><b>$</b><input id="tipsInput" name="tips" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off" required /></div>
+          </label>
+          <label>
+            <span>Total tip out</span>
+            <div class="money-input"><b>$</b><input id="tipOutInput" name="tipOut" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off" required /></div>
+          </label>
+        </div>
+
+        <div class="take-home-preview">
+          <span>You're walking with</span>
+          <strong id="takeHomePreview">$0.00</strong>
+        </div>
+        <p id="formError" class="form-error" role="alert"></p>
+        <button class="save-button" type="submit">Save shift</button>
+      </form>
+    </dialog>
+
+    <dialog id="infoDialog" class="info-dialog">
+      <div>
+        <button class="close-button" id="closeInfoButton" type="button" aria-label="Close">×</button>
+        <div class="info-mark">AS</div>
+        <h2>Made for your shifts.</h2>
+        <p>Your entries stay private in this browser and are available offline after your first visit.</p>
+        <p>On iPhone, tap <strong>Share</strong>, then <strong>Add to Home Screen</strong> to use it like an app.</p>
+        <button class="save-button" id="gotItButton" type="button">Got it</button>
+      </div>
+    </dialog>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "After Shift - Tip Tracker",
+  "short_name": "After Shift",
+  "description": "Track sales, tips, tip out, and weekly take-home pay.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4efe5",
+  "theme_color": "#f4efe5",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
