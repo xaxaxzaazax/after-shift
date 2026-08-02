@@ -2,7 +2,7 @@ const SUPABASE_URL = "https://vlddrxazjjtqdxoqlcwr.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_jZjq3fcOmrshCscHbNEdhw_rNvSeKZP";
 const LEGACY_STORAGE_KEY = "after-shift.entries.v1";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const $ = (selector) => document.querySelector(selector);
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const wholeMoney = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -11,8 +11,11 @@ const elements = {
   authView: $("#authView"),
   appView: $("#appView"),
   bottomAction: $("#bottomAction"),
-  googleLoginButton: $("#googleLoginButton"),
+  emailAuthForm: $("#emailAuthForm"),
+  authEmail: $("#authEmail"),
+  emailLoginButton: $("#emailLoginButton"),
   authError: $("#authError"),
+  authMessage: $("#authMessage"),
   syncStatus: $("#syncStatus"),
   todayLabel: $("#todayLabel"),
   weekRange: $("#weekRange"),
@@ -48,7 +51,7 @@ let sessionVersion = 0;
 const legacyMigrationAttemptedFor = new Set();
 
 function setAuthBusy(isBusy) {
-  elements.googleLoginButton.disabled = isBusy;
+  elements.emailLoginButton.disabled = isBusy;
 }
 
 function showSyncStatus(message) {
@@ -56,20 +59,28 @@ function showSyncStatus(message) {
   elements.syncStatus.hidden = !message;
 }
 
-async function signIn(provider) {
+async function sendSignInLink(event) {
+  event.preventDefault();
   setAuthBusy(true);
   elements.authError.textContent = "";
+  elements.authMessage.textContent = "";
 
-  const redirectTo = new URL("./", window.location.href).href;
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider,
-    options: { redirectTo }
+  const emailRedirectTo = new URL("./", window.location.href).href;
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email: elements.authEmail.value.trim(),
+    options: {
+      emailRedirectTo,
+      shouldCreateUser: true
+    }
   });
 
   if (error) {
     elements.authError.textContent = error.message;
-    setAuthBusy(false);
+  } else {
+    elements.authMessage.textContent = "Check your email and open the secure sign-in link.";
   }
+
+  setAuthBusy(false);
 }
 
 function normalizeEntry(row) {
@@ -126,7 +137,7 @@ async function migrateLegacyEntries() {
     return;
   }
 
-  if (!confirm(`Move ${validEntries.length} saved ${validEntries.length === 1 ? "shift" : "shifts"} from this device into the Google account you just used?`)) return;
+  if (!confirm(`Move ${validEntries.length} saved ${validEntries.length === 1 ? "shift" : "shifts"} from this device into the email account you just used?`)) return;
 
   const rows = validEntries.map(({ entry, index }) => ({
     legacy_id: String(entry.id || `legacy-${index}-${entry.date}-${entry.createdAt || "unknown"}`),
@@ -138,7 +149,7 @@ async function migrateLegacyEntries() {
   }));
 
   showSyncStatus(`Moving ${rows.length} saved ${rows.length === 1 ? "shift" : "shifts"} to your account...`);
-  const { error } = await supabase.from("shifts").upsert(rows, {
+  const { error } = await supabaseClient.from("shifts").upsert(rows, {
     onConflict: "user_id,legacy_id",
     ignoreDuplicates: true
   });
@@ -155,7 +166,7 @@ async function migrateLegacyEntries() {
 }
 
 async function loadEntries(userId) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from("shifts")
     .select("id, shift_date, sales, tips, tip_out, created_at")
     .order("shift_date", { ascending: false })
@@ -369,7 +380,7 @@ async function submitShift(event) {
   const saveButton = elements.shiftForm.querySelector(".save-button");
   saveButton.disabled = true;
   elements.formError.textContent = "";
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from("shifts")
     .insert({
       shift_date: elements.shiftDate.value,
@@ -393,7 +404,7 @@ async function submitShift(event) {
 
 async function deleteEntry(id) {
   if (!confirm("Delete this shift?")) return;
-  const { error } = await supabase.from("shifts").delete().eq("id", id);
+  const { error } = await supabaseClient.from("shifts").delete().eq("id", id);
 
   if (error) {
     alert(`Could not delete the shift: ${error.message}`);
@@ -406,7 +417,7 @@ async function deleteEntry(id) {
 
 async function clearEntries() {
   if (!confirm("Delete all of your shift history? This cannot be undone.")) return;
-  const { error } = await supabase.from("shifts").delete().eq("user_id", currentUser.id);
+  const { error } = await supabaseClient.from("shifts").delete().eq("user_id", currentUser.id);
 
   if (error) {
     alert(`Could not clear your shifts: ${error.message}`);
@@ -421,8 +432,8 @@ function closeOnBackdrop(event) {
   if (event.target === event.currentTarget) event.currentTarget.close();
 }
 
-elements.googleLoginButton.addEventListener("click", () => signIn("google"));
-$("#signOutButton").addEventListener("click", () => supabase.auth.signOut());
+elements.emailAuthForm.addEventListener("submit", sendSignInLink);
+$("#signOutButton").addEventListener("click", () => supabaseClient.auth.signOut());
 $("#addButton").addEventListener("click", openShiftForm);
 elements.previousWeekButton.addEventListener("click", () => {
   selectedWeekOffset += 1;
@@ -444,11 +455,11 @@ $("#gotItButton").addEventListener("click", () => elements.infoDialog.close());
 elements.clearButton.addEventListener("click", clearEntries);
 
 async function initialize() {
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
   if (sessionError) elements.authError.textContent = sessionError.message;
   await applySession(session);
 
-  supabase.auth.onAuthStateChange((event, nextSession) => {
+  supabaseClient.auth.onAuthStateChange((event, nextSession) => {
     if (event === "INITIAL_SESSION") return;
     setTimeout(() => applySession(nextSession), 0);
   });

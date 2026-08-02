@@ -22,14 +22,16 @@
         <div class="auth-mark">AS</div>
         <p class="eyebrow">AFTER SHIFT</p>
         <h1 id="authHeading">Your shifts, wherever you sign in.</h1>
-        <p class="auth-copy">Sign in with Google to securely save your shifts and see them on any device.</p>
-        <div class="auth-actions">
-          <button class="oauth-button google-button" id="googleLoginButton" type="button">
-            <img class="google-mark" src="googleicon.webp" alt="" />
-            Continue with Google
-          </button>
-        </div>
+        <p class="auth-copy">Enter your email and we will send you a secure sign-in link. No password needed.</p>
+        <form class="auth-actions" id="emailAuthForm">
+          <label class="auth-field">
+            <span>Email address</span>
+            <input id="authEmail" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required />
+          </label>
+          <button class="email-login-button" id="emailLoginButton" type="submit">Email me a sign-in link</button>
+        </form>
         <p id="authError" class="auth-error" role="alert"></p>
+        <p id="authMessage" class="auth-message" role="status"></p>
         <p class="privacy-note">We only use your login to keep your shift records connected to you.</p>
       </section>
     </main>
