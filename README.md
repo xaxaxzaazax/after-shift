@@ -19,3 +19,17 @@ Email magic-link authentication is enabled through Supabase Auth. Configure cust
 ## Account deletion
 
 The authenticated `delete-account` Supabase Edge Function validates the current session and deletes only that user. Foreign-key cascades remove their shifts and goals. The service-role key remains server-side and is never exposed to the browser.
+
+## Tip report scanner
+
+The scanner sends an authenticated, resized report image to the `scan-tip-report` Supabase Edge Function. The function calls OpenAI and returns structured shift fields that the user reviews before saving. API keys never belong in `app.js` or any browser-accessible file.
+
+After rotating any exposed OpenAI key, configure and deploy the function:
+
+```sh
+supabase secrets set OPENAI_API_KEY=your_replacement_key
+supabase db push
+supabase functions deploy scan-tip-report
+```
+
+`OPENAI_VISION_MODEL` is optional and defaults to `gpt-4.1-mini`. Authenticated accounts are limited to 20 scans per day to control API spending.

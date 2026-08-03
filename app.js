@@ -68,6 +68,14 @@ const elements = {
   shiftDialog: $("#shiftDialog"),
   goalDialog: $("#goalDialog"),
   accountDialog: $("#accountDialog"),
+  scanDialog: $("#scanDialog"),
+  scanForm: $("#scanForm"),
+  reportImageInput: $("#reportImageInput"),
+  scanPreview: $("#scanPreview"),
+  scanUploadLabel: $("#scanUploadLabel"),
+  analyzeReportButton: $("#analyzeReportButton"),
+  scanError: $("#scanError"),
+  scanNotice: $("#scanNotice"),
   goalForm: $("#goalForm"),
   weeklyGoalInput: $("#weeklyGoalInput"),
   monthlyGoalInput: $("#monthlyGoalInput"),
@@ -97,6 +105,7 @@ let dataVersion = 0;
 let goals = { weekly: null, monthly: null };
 const legacyMigrationAttemptedFor = new Set();
 let authMode = "login";
+let selectedReportImage = null;
 
 function setAuthBusy(isBusy) {
   elements.emailLoginButton.disabled = isBusy;
@@ -336,6 +345,7 @@ async function applySession(session) {
     if (elements.shiftDialog.open) elements.shiftDialog.close();
     if (elements.goalDialog.open) elements.goalDialog.close();
     if (elements.accountDialog.open) elements.accountDialog.close();
+    if (elements.scanDialog.open) elements.scanDialog.close();
     if (elements.resetDialog.open) elements.resetDialog.close();
     render();
     showSyncStatus("");
@@ -690,13 +700,136 @@ function updatePreview() {
   elements.takeHomePreview.textContent = money.format(tips - tipOut);
 }
 
-function openShiftForm() {
+function openShiftForm(scannedFields = null) {
   elements.shiftForm.reset();
   elements.shiftDate.value = localDateString();
   elements.formError.textContent = "";
+  elements.scanNotice.hidden = true;
+  elements.scanNotice.textContent = "";
+
+  if (scannedFields) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(scannedFields.shiftDate || "")) elements.shiftDate.value = scannedFields.shiftDate;
+    if (Number.isFinite(scannedFields.sales) && scannedFields.sales >= 0) elements.salesInput.value = scannedFields.sales;
+    if (Number.isFinite(scannedFields.tips) && scannedFields.tips >= 0) elements.tipsInput.value = scannedFields.tips;
+    if (Number.isFinite(scannedFields.tipOut) && scannedFields.tipOut >= 0) elements.tipOutInput.value = scannedFields.tipOut;
+    if (Number.isFinite(scannedFields.hours) && scannedFields.hours > 0 && scannedFields.hours <= 24) elements.hoursInput.value = scannedFields.hours;
+
+    const source = scannedFields.restaurantName ? ` from ${scannedFields.restaurantName}` : "";
+    const warningText = Array.isArray(scannedFields.warnings) && scannedFields.warnings.length
+      ? ` ${scannedFields.warnings.join(" ")}`
+      : "";
+    elements.scanNotice.textContent = `Report scanned${source} with ${scannedFields.confidence || "unknown"} confidence. Review every field before saving.${warningText}`;
+    elements.scanNotice.hidden = false;
+  }
+
   updatePreview();
   elements.shiftDialog.showModal();
-  setTimeout(() => elements.tipsInput.focus(), 150);
+  setTimeout(() => (scannedFields ? elements.shiftDate : elements.tipsInput).focus(), 150);
+}
+
+function resetScanner() {
+  selectedReportImage = null;
+  elements.scanForm.reset();
+  elements.scanPreview.hidden = true;
+  elements.scanPreview.removeAttribute("src");
+  elements.scanUploadLabel.textContent = "Take photo or choose image";
+  elements.analyzeReportButton.disabled = true;
+  elements.analyzeReportButton.textContent = "Read report";
+  elements.scanError.textContent = "";
+}
+
+function openScanner() {
+  resetScanner();
+  elements.scanDialog.showModal();
+}
+
+async function resizeReportImage(file) {
+  let image;
+  let objectUrl;
+  if ("createImageBitmap" in window) {
+    try {
+      image = await createImageBitmap(file, { imageOrientation: "from-image" });
+    } catch {
+      image = null;
+    }
+  }
+  if (!image) {
+    objectUrl = URL.createObjectURL(file);
+    image = new Image();
+    image.src = objectUrl;
+    await image.decode();
+  }
+  const maxDimension = 1800;
+  const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  if (typeof image.close === "function") image.close();
+  if (objectUrl) URL.revokeObjectURL(objectUrl);
+  return canvas.toDataURL("image/jpeg", 0.86);
+}
+
+async function selectReportImage() {
+  const [file] = elements.reportImageInput.files;
+  selectedReportImage = null;
+  elements.scanError.textContent = "";
+  elements.analyzeReportButton.disabled = true;
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    elements.scanError.textContent = "Choose a photo of the report.";
+    return;
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    elements.scanError.textContent = "Choose an image smaller than 20 MB.";
+    return;
+  }
+
+  try {
+    selectedReportImage = await resizeReportImage(file);
+    elements.scanPreview.src = selectedReportImage;
+    elements.scanPreview.hidden = false;
+    elements.scanUploadLabel.textContent = file.name || "Photo selected";
+    elements.analyzeReportButton.disabled = false;
+  } catch {
+    elements.scanError.textContent = "This image could not be opened. Try a JPEG or PNG photo.";
+  }
+}
+
+async function scanReport(event) {
+  event.preventDefault();
+  if (!selectedReportImage) return;
+  elements.scanError.textContent = "";
+  elements.analyzeReportButton.disabled = true;
+  elements.analyzeReportButton.textContent = "Reading report...";
+
+  const { data, error } = await supabaseClient.functions.invoke("scan-tip-report", {
+    body: { image: selectedReportImage }
+  });
+
+  if (error || !data?.fields) {
+    let message = error?.message || data?.error || "The report could not be read.";
+    if (error?.context instanceof Response) {
+      try {
+        const details = await error.context.clone().json();
+        if (details.error) message = details.error;
+      } catch {
+        // Keep the generic function error when no JSON response is available.
+      }
+    }
+    elements.scanError.textContent = message;
+    elements.analyzeReportButton.disabled = false;
+    elements.analyzeReportButton.textContent = "Try again";
+    return;
+  }
+
+  const fields = data.fields;
+  elements.scanDialog.close();
+  resetScanner();
+  openShiftForm(fields);
 }
 
 async function submitShift(event) {
@@ -906,7 +1039,11 @@ elements.nextSummaryButton.addEventListener("click", () => {
   summaryOffset = Math.max(0, summaryOffset - 1);
   renderSummary();
 });
-$("#addButton").addEventListener("click", openShiftForm);
+$("#addButton").addEventListener("click", () => openShiftForm());
+$("#reportScanButton").addEventListener("click", openScanner);
+$("#closeScanButton").addEventListener("click", () => elements.scanDialog.close());
+elements.reportImageInput.addEventListener("change", selectReportImage);
+elements.scanForm.addEventListener("submit", scanReport);
 elements.previousWeekButton.addEventListener("click", () => {
   selectedWeekOffset += 1;
   render();
@@ -922,6 +1059,7 @@ elements.tipOutInput.addEventListener("input", updatePreview);
 elements.shiftDialog.addEventListener("click", closeOnBackdrop);
 elements.goalDialog.addEventListener("click", closeOnBackdrop);
 elements.accountDialog.addEventListener("click", closeOnBackdrop);
+elements.scanDialog.addEventListener("click", closeOnBackdrop);
 
 async function initialize() {
   const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();

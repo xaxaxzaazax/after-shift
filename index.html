@@ -172,6 +172,11 @@
         </article>
       </section>
       </div>
+
+      <button class="scan-fab" id="reportScanButton" type="button" aria-label="Scan a tip-out report">
+        <span aria-hidden="true">▣</span>
+        <b>Scan report</b>
+      </button>
     </main>
 
     <div class="bottom-action" id="bottomAction" hidden>
@@ -188,6 +193,8 @@
           </div>
           <button class="close-button" id="closeButton" type="button" aria-label="Close">×</button>
         </div>
+
+        <p id="scanNotice" class="scan-notice" role="status" hidden></p>
 
         <label class="date-field">
           <span>Date</span>
@@ -224,6 +231,24 @@
         </div>
         <p id="formError" class="form-error" role="alert"></p>
         <button class="save-button" type="submit">Save shift</button>
+      </form>
+    </dialog>
+
+    <dialog id="scanDialog" class="info-dialog scan-dialog">
+      <form id="scanForm" method="dialog">
+        <button class="close-button" id="closeScanButton" type="button" aria-label="Close">×</button>
+        <p class="eyebrow">SMART IMPORT</p>
+        <h2>Scan your tip-out report</h2>
+        <p>Take a clear photo of the full report. You will review every amount before it is saved.</p>
+        <label class="scan-upload" for="reportImageInput">
+          <input id="reportImageInput" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" />
+          <span class="scan-upload-mark" aria-hidden="true">▣</span>
+          <strong id="scanUploadLabel">Take photo or choose image</strong>
+          <small>JPEG, PNG, or WebP</small>
+        </label>
+        <img id="scanPreview" class="scan-preview" alt="Selected tip-out report" hidden />
+        <p id="scanError" class="form-error" role="alert"></p>
+        <button class="save-button" id="analyzeReportButton" type="submit" disabled>Read report</button>
       </form>
     </dialog>
 
