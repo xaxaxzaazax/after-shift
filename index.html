@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-180.png" />
-    <link rel="stylesheet" href="styles.css?v=17" />
+    <link rel="stylesheet" href="styles.css?v=18" />
     <title>After Shift</title>
   </head>
   <body>
@@ -187,6 +187,22 @@
       <button class="add-button" id="addButton" type="button"><span>+</span> Add shift</button>
     </div>
 
+    <div class="scan-loading" id="scanLoading" role="status" aria-live="polite" hidden>
+      <div class="scan-loading-card">
+        <div class="scan-document" aria-hidden="true">
+          <svg viewBox="0 0 72 88">
+            <path d="M15 4h32l10 10v66l-6-4-7 4-8-4-8 4-7-4-6 4V4Z" />
+            <path d="M47 4v12h10M25 31h22M25 43h16M25 55h22" />
+          </svg>
+          <span></span>
+        </div>
+        <p class="eyebrow">SMART IMPORT</p>
+        <h2>Reading your report</h2>
+        <p id="scanLoadingText">Preparing your photo...</p>
+        <div class="scan-loading-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+      </div>
+    </div>
+
     <dialog id="shiftDialog" class="sheet">
       <form id="shiftForm" method="dialog">
         <div class="sheet-handle" aria-hidden="true"></div>
@@ -287,6 +303,6 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0/dist/umd/supabase.min.js" integrity="sha384-fPWur1rx/DE6YtXP/x0MD6dd90RgnVsz5yX/DIg7CcVAnTBZsENWuIcpvVTM39ti" crossorigin="anonymous" defer></script>
-    <script src="app.js?v=17" defer></script>
+    <script src="app.js?v=18" defer></script>
   </body>
 </html>

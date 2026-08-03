@@ -70,6 +70,8 @@ const elements = {
   accountDialog: $("#accountDialog"),
   reportScanButton: $("#reportScanButton"),
   reportImageInput: $("#reportImageInput"),
+  scanLoading: $("#scanLoading"),
+  scanLoadingText: $("#scanLoadingText"),
   scanNotice: $("#scanNotice"),
   goalForm: $("#goalForm"),
   weeklyGoalInput: $("#weeklyGoalInput"),
@@ -101,6 +103,7 @@ let goals = { weekly: null, monthly: null };
 const legacyMigrationAttemptedFor = new Set();
 let authMode = "login";
 let selectedReportImage = null;
+let scanLoadingTimers = [];
 
 function setAuthBusy(isBusy) {
   elements.emailLoginButton.disabled = isBusy;
@@ -333,6 +336,7 @@ async function applySession(session) {
   setAuthBusy(false);
 
   if (!currentUser) {
+    resetScanner();
     entries = [];
     goals = { weekly: null, monthly: null };
     loadedUserId = null;
@@ -725,6 +729,7 @@ function resetScanner() {
   selectedReportImage = null;
   elements.reportImageInput.value = "";
   elements.reportScanButton.disabled = false;
+  hideScanLoading();
 }
 
 function openScanner() {
@@ -763,6 +768,26 @@ async function resizeReportImage(file) {
   return canvas.toDataURL("image/jpeg", 0.86);
 }
 
+function hideScanLoading() {
+  scanLoadingTimers.forEach(clearTimeout);
+  scanLoadingTimers = [];
+  elements.scanLoading.hidden = true;
+}
+
+function showScanLoading(message) {
+  hideScanLoading();
+  elements.scanLoadingText.textContent = message;
+  elements.scanLoading.hidden = false;
+}
+
+function startScanLoadingStages() {
+  showScanLoading("Finding the report date...");
+  scanLoadingTimers = [
+    setTimeout(() => { elements.scanLoadingText.textContent = "Reading sales, tips, and tip-out..."; }, 1400),
+    setTimeout(() => { elements.scanLoadingText.textContent = "Checking the totals..."; }, 3200)
+  ];
+}
+
 async function selectReportImage() {
   const [file] = elements.reportImageInput.files;
   selectedReportImage = null;
@@ -776,10 +801,12 @@ async function selectReportImage() {
     return;
   }
 
-  showSyncStatus("Preparing your report photo...");
+  showSyncStatus("");
+  showScanLoading("Preparing your photo...");
   try {
     selectedReportImage = await resizeReportImage(file);
   } catch {
+    hideScanLoading();
     showSyncStatus("This photo could not be opened. Try taking another picture.");
     return;
   }
@@ -790,7 +817,7 @@ async function selectReportImage() {
 async function scanSelectedReport() {
   if (!selectedReportImage) return;
   elements.reportScanButton.disabled = true;
-  showSyncStatus("Reading the date and totals from your report...");
+  startScanLoadingStages();
 
   let data;
   let error;
@@ -804,6 +831,7 @@ async function scanSelectedReport() {
     }));
   } catch {
     elements.reportScanButton.disabled = false;
+    hideScanLoading();
     showSyncStatus("The report could not be scanned. Check your connection and try again.");
     return;
   }
@@ -819,11 +847,13 @@ async function scanSelectedReport() {
       }
     }
     elements.reportScanButton.disabled = false;
+    hideScanLoading();
     showSyncStatus(message);
     return;
   }
 
   const fields = data.fields;
+  hideScanLoading();
   resetScanner();
   showSyncStatus("");
   openShiftForm(fields);
