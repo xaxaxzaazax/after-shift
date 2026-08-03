@@ -91,8 +91,23 @@ button { color: inherit; }
 .sync-status { margin: 14px 0 -10px; padding: 9px 12px; border-radius: 12px; background: var(--green-light); color: var(--green); font-size: .72rem; text-align: center; }
 
 .page-tabs { display: flex; gap: 4px; margin-top: 20px; padding: 4px; border-radius: 15px; background: rgba(30,44,40,.07); }
-.page-tabs button { flex: 1; min-height: 40px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); font-size: .8rem; font-weight: 800; cursor: pointer; }
+.page-tabs button { flex: 1; min-height: 40px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); font-size: .8rem; font-weight: 800; cursor: pointer; transition: color 200ms ease, background 200ms ease; }
 .page-tabs button.active { background: var(--paper); box-shadow: 0 2px 8px rgba(30,44,40,.09); color: var(--green); }
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes barRise {
+  from { height: 3px; opacity: .35; }
+}
+
+.page-enter { animation: pageIn .34s cubic-bezier(.22,.9,.36,1) both; }
+.page-enter .insight-card { animation: pageIn .42s cubic-bezier(.22,.9,.36,1) both .06s; }
+.page-enter .summary-amount { animation: pageIn .45s cubic-bezier(.22,.9,.36,1) both .12s; }
+.page-enter .hero-card { animation: pageIn .42s cubic-bezier(.22,.9,.36,1) both .06s; }
+.page-enter .metrics { animation: pageIn .46s cubic-bezier(.22,.9,.36,1) both .12s; }
 
 .eyebrow {
   margin: 0 0 4px;
@@ -201,7 +216,19 @@ h1 { margin-bottom: 0; font-family: Georgia, serif; font-size: 2rem; letter-spac
 .chart-column { display: flex; min-width: 0; height: 100%; flex: 1; flex-direction: column; align-items: center; justify-content: flex-end; gap: 7px; }
 .chart-value { color: var(--muted); font-size: .52rem; white-space: nowrap; }
 .chart-bar-wrap { display: flex; width: 100%; height: 105px; align-items: flex-end; justify-content: center; }
-.chart-bar { width: min(100%, 28px); min-height: 3px; border-radius: 8px 8px 4px 4px; background: linear-gradient(180deg, var(--rust), #dc9a74); transition: height 400ms ease; }
+.chart-bar { width: min(100%, 28px); min-height: 3px; border-radius: 8px 8px 4px 4px; background: linear-gradient(180deg, var(--rust), #dc9a74); transition: height 400ms ease; animation: barRise .5s cubic-bezier(.25,1,.4,1) both; }
+.chart-column:nth-child(1) .chart-bar { animation-delay: .03s; }
+.chart-column:nth-child(2) .chart-bar { animation-delay: .06s; }
+.chart-column:nth-child(3) .chart-bar { animation-delay: .09s; }
+.chart-column:nth-child(4) .chart-bar { animation-delay: .12s; }
+.chart-column:nth-child(5) .chart-bar { animation-delay: .15s; }
+.chart-column:nth-child(6) .chart-bar { animation-delay: .18s; }
+.chart-column:nth-child(7) .chart-bar { animation-delay: .21s; }
+.chart-column:nth-child(8) .chart-bar { animation-delay: .24s; }
+.chart-column:nth-child(9) .chart-bar { animation-delay: .27s; }
+.chart-column:nth-child(10) .chart-bar { animation-delay: .3s; }
+.chart-column:nth-child(11) .chart-bar { animation-delay: .33s; }
+.chart-column:nth-child(12) .chart-bar { animation-delay: .36s; }
 .chart-label { overflow: hidden; width: 100%; color: var(--muted); font-size: .55rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 
 .section-heading { margin-bottom: 14px; }

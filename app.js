@@ -793,12 +793,19 @@ function closeOnBackdrop(event) {
 
 function showPage(page) {
   const isHome = page === "home";
+  const showing = isHome ? elements.homePage : elements.earningsPage;
+  const wasHidden = showing.hidden;
   elements.homePage.hidden = !isHome;
   elements.earningsPage.hidden = isHome;
   elements.homeTabButton.classList.toggle("active", isHome);
   elements.earningsTabButton.classList.toggle("active", !isHome);
   elements.bottomAction.hidden = !isHome || !currentUser;
   if (!isHome) renderSummary();
+  if (wasHidden) {
+    showing.classList.remove("page-enter");
+    void showing.offsetWidth;
+    showing.classList.add("page-enter");
+  }
 }
 
 elements.homeTabButton.addEventListener("click", () => showPage("home"));
