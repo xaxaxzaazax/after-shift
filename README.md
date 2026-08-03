@@ -1,6 +1,6 @@
 # After Shift
 
-A shift and tip tracker with passwordless email login. Shift records are stored in Supabase and protected with row-level security so each user can access only their own data.
+A shift and tip tracker with passwordless email login, weekly/monthly goals, monthly and yearly summaries, earnings charts, hours worked, and shift notes. Records are stored in Supabase and protected with row-level security so each user can access only their own data.
 
 ## Run locally
 
@@ -15,3 +15,7 @@ The frontend uses a Supabase publishable key, which is safe to include in browse
 Set the Supabase Site URL to `https://xaxaxzaazax.github.io/after-shift/` and add the same address to the redirect URL allow list.
 
 Email magic-link authentication is enabled through Supabase Auth. Configure custom SMTP before opening registration to the public; Supabase's built-in email sender is intended only for testing and project team addresses.
+
+## Account deletion
+
+The authenticated `delete-account` Supabase Edge Function validates the current session and deletes only that user. Foreign-key cascades remove their shifts and goals. The service-role key remains server-side and is never exposed to the browser.

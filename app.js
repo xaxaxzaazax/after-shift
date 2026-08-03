@@ -25,21 +25,50 @@ const elements = {
   weekTipOut: $("#weekTipOut"),
   weekTipRate: $("#weekTipRate"),
   weekTipOutRate: $("#weekTipOutRate"),
+  weekHours: $("#weekHours"),
+  weekHourly: $("#weekHourly"),
   shiftCount: $("#shiftCount"),
   weekProgress: $("#weekProgress"),
   weekHeading: $("#weekHeading"),
   previousWeekButton: $("#previousWeekButton"),
   nextWeekButton: $("#nextWeekButton"),
+  goalButton: $("#goalButton"),
+  monthPeriodButton: $("#monthPeriodButton"),
+  yearPeriodButton: $("#yearPeriodButton"),
+  previousSummaryButton: $("#previousSummaryButton"),
+  nextSummaryButton: $("#nextSummaryButton"),
+  summaryHeading: $("#summaryHeading"),
+  summaryShiftCount: $("#summaryShiftCount"),
+  summaryTakeHome: $("#summaryTakeHome"),
+  summarySales: $("#summarySales"),
+  summaryTips: $("#summaryTips"),
+  summaryHours: $("#summaryHours"),
+  summaryHourly: $("#summaryHourly"),
+  summaryGoalWrap: $("#summaryGoalWrap"),
+  summaryGoalLabel: $("#summaryGoalLabel"),
+  summaryGoalValue: $("#summaryGoalValue"),
+  summaryGoalProgress: $("#summaryGoalProgress"),
+  chartTitle: $("#chartTitle"),
+  chartRange: $("#chartRange"),
+  earningsChart: $("#earningsChart"),
   emptyState: $("#emptyState"),
   shiftList: $("#shiftList"),
-  clearButton: $("#clearButton"),
   shiftDialog: $("#shiftDialog"),
   infoDialog: $("#infoDialog"),
+  goalDialog: $("#goalDialog"),
+  accountDialog: $("#accountDialog"),
+  goalForm: $("#goalForm"),
+  weeklyGoalInput: $("#weeklyGoalInput"),
+  monthlyGoalInput: $("#monthlyGoalInput"),
+  goalError: $("#goalError"),
+  accountError: $("#accountError"),
   shiftForm: $("#shiftForm"),
   shiftDate: $("#shiftDate"),
   salesInput: $("#salesInput"),
   tipsInput: $("#tipsInput"),
   tipOutInput: $("#tipOutInput"),
+  hoursInput: $("#hoursInput"),
+  notesInput: $("#notesInput"),
   takeHomePreview: $("#takeHomePreview"),
   formError: $("#formError")
 };
@@ -47,11 +76,37 @@ const elements = {
 let entries = [];
 let currentUser = null;
 let selectedWeekOffset = 0;
+let summaryPeriod = "month";
+let summaryOffset = 0;
 let sessionVersion = 0;
+let loadedUserId = null;
+let lastLoadedAt = 0;
+let backgroundRefresh = null;
+let dataVersion = 0;
+let goals = { weekly: null, monthly: null };
 const legacyMigrationAttemptedFor = new Set();
+let authCooldownTimer = null;
 
 function setAuthBusy(isBusy) {
   elements.emailLoginButton.disabled = isBusy;
+}
+
+function startAuthCooldown(seconds = 60) {
+  clearInterval(authCooldownTimer);
+  let remaining = seconds;
+  elements.emailLoginButton.disabled = true;
+  elements.emailLoginButton.textContent = `Send again in ${remaining}s`;
+  authCooldownTimer = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      clearInterval(authCooldownTimer);
+      authCooldownTimer = null;
+      elements.emailLoginButton.disabled = false;
+      elements.emailLoginButton.textContent = "Email me a sign-in link";
+      return;
+    }
+    elements.emailLoginButton.textContent = `Send again in ${remaining}s`;
+  }, 1000);
 }
 
 function showSyncStatus(message) {
@@ -75,9 +130,16 @@ async function sendSignInLink(event) {
   });
 
   if (error) {
+    if (error.status === 429 || error.code === "over_email_send_rate_limit") {
+      elements.authError.textContent = "Please wait 60 seconds before requesting another link. If this continues, the test email allowance may need up to an hour to reset.";
+      startAuthCooldown();
+      return;
+    }
     elements.authError.textContent = error.message;
   } else {
     elements.authMessage.textContent = "Check your email and open the secure sign-in link.";
+    startAuthCooldown();
+    return;
   }
 
   setAuthBusy(false);
@@ -90,6 +152,8 @@ function normalizeEntry(row) {
     sales: Number(row.sales),
     tips: Number(row.tips),
     tipOut: Number(row.tip_out),
+    hours: row.hours_worked == null ? null : Number(row.hours_worked),
+    notes: row.notes || "",
     createdAt: new Date(row.created_at).getTime()
   };
 }
@@ -165,42 +229,99 @@ async function migrateLegacyEntries() {
   setTimeout(() => showSyncStatus(""), 3500);
 }
 
-async function loadEntries(userId) {
+async function fetchEntries() {
   const { data, error } = await supabaseClient
     .from("shifts")
-    .select("id, shift_date, sales, tips, tip_out, created_at")
+    .select("id, shift_date, sales, tips, tip_out, hours_worked, notes, created_at")
     .order("shift_date", { ascending: false })
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  if (currentUser?.id !== userId) return;
-  entries = data.map(normalizeEntry);
-  render();
+  return data.map(normalizeEntry);
+}
+
+async function fetchGoals() {
+  const { data, error } = await supabaseClient
+    .from("user_goals")
+    .select("weekly_take_home, monthly_take_home")
+    .maybeSingle();
+
+  if (error) throw error;
+  return {
+    weekly: data?.weekly_take_home == null ? null : Number(data.weekly_take_home),
+    monthly: data?.monthly_take_home == null ? null : Number(data.monthly_take_home)
+  };
 }
 
 async function applySession(session) {
   const version = ++sessionVersion;
-  currentUser = session?.user ?? null;
+  const nextUser = session?.user ?? null;
+  const sameLoadedUser = nextUser && loadedUserId === nextUser.id;
+  currentUser = nextUser;
   elements.authView.hidden = Boolean(currentUser);
-  elements.appView.hidden = !currentUser;
-  elements.bottomAction.hidden = !currentUser;
+  elements.appView.hidden = !sameLoadedUser;
+  elements.bottomAction.hidden = !sameLoadedUser;
   setAuthBusy(false);
 
   if (!currentUser) {
     entries = [];
+    goals = { weekly: null, monthly: null };
+    loadedUserId = null;
+    lastLoadedAt = 0;
+    if (elements.shiftDialog.open) elements.shiftDialog.close();
+    if (elements.infoDialog.open) elements.infoDialog.close();
+    if (elements.goalDialog.open) elements.goalDialog.close();
+    if (elements.accountDialog.open) elements.accountDialog.close();
+    render();
     showSyncStatus("");
     return;
   }
 
+  if (sameLoadedUser) return;
+
   const userId = currentUser.id;
+  entries = [];
+  goals = { weekly: null, monthly: null };
+  render();
   showSyncStatus("Loading your shifts...");
 
   try {
     await migrateLegacyEntries();
-    await loadEntries(userId);
+    const [nextEntries, nextGoals] = await Promise.all([fetchEntries(), fetchGoals()]);
+    if (currentUser?.id !== userId) return;
+    entries = nextEntries;
+    goals = nextGoals;
+    loadedUserId = userId;
+    lastLoadedAt = Date.now();
+    render();
+    elements.appView.hidden = false;
+    elements.bottomAction.hidden = false;
     if (version === sessionVersion && elements.syncStatus.textContent === "Loading your shifts...") showSyncStatus("");
   } catch (error) {
-    if (version === sessionVersion) showSyncStatus(`Could not load your shifts: ${error.message}`);
+    if (version === sessionVersion) {
+      elements.appView.hidden = false;
+      elements.bottomAction.hidden = false;
+      showSyncStatus(`Could not load your shifts: ${error.message}`);
+    }
+  }
+}
+
+async function refreshInBackground() {
+  if (!currentUser || backgroundRefresh || Date.now() - lastLoadedAt < 300000) return;
+  const userId = currentUser.id;
+  const version = dataVersion;
+  backgroundRefresh = Promise.all([fetchEntries(), fetchGoals()]);
+  try {
+    const [nextEntries, nextGoals] = await backgroundRefresh;
+    if (currentUser?.id !== userId || dataVersion !== version) return;
+    entries = nextEntries;
+    goals = nextGoals;
+    lastLoadedAt = Date.now();
+    render();
+  } catch (error) {
+    if (currentUser?.id === userId) showSyncStatus(`Could not refresh your shifts: ${error.message}`);
+  } finally {
+    backgroundRefresh = null;
   }
 }
 
@@ -224,6 +345,18 @@ function getWeekBounds(date = new Date()) {
   return { start, end };
 }
 
+function getMonthBounds(date = new Date()) {
+  const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+  return { start, end };
+}
+
+function getYearBounds(date = new Date()) {
+  const start = new Date(date.getFullYear(), 0, 1);
+  const end = new Date(date.getFullYear(), 11, 31, 23, 59, 59, 999);
+  return { start, end };
+}
+
 function sum(list, field) {
   return list.reduce((total, item) => total + item[field], 0);
 }
@@ -236,21 +369,132 @@ function formatRate(rate) {
   return `${rate.toFixed(1)}%`;
 }
 
+function takeHome(list) {
+  return sum(list, "tips") - sum(list, "tipOut");
+}
+
+function totalHours(list) {
+  return list.reduce((total, entry) => total + (entry.hours || 0), 0);
+}
+
+function hourlyEarnings(list) {
+  const timedEntries = list.filter((entry) => entry.hours > 0);
+  const hours = totalHours(timedEntries);
+  return hours > 0 ? takeHome(timedEntries) / hours : 0;
+}
+
+function entriesBetween(start, end) {
+  return entries.filter((entry) => {
+    const date = parseDate(entry.date);
+    return date >= start && date <= end;
+  });
+}
+
+function selectedSummaryDate() {
+  const date = new Date();
+  if (summaryPeriod === "month") {
+    date.setDate(1);
+    date.setMonth(date.getMonth() - summaryOffset);
+  }
+  else date.setFullYear(date.getFullYear() - summaryOffset);
+  return date;
+}
+
+function createChartBuckets(date) {
+  if (summaryPeriod === "year") {
+    return Array.from({ length: 12 }, (_, month) => {
+      const { start, end } = getMonthBounds(new Date(date.getFullYear(), month, 1));
+      return { label: start.toLocaleDateString("en-US", { month: "short" }), value: takeHome(entriesBetween(start, end)) };
+    });
+  }
+
+  const monthBounds = getMonthBounds(date);
+  const buckets = [];
+  let cursor = new Date(monthBounds.start);
+  while (cursor <= monthBounds.end) {
+    const week = getWeekBounds(cursor);
+    const start = new Date(Math.max(week.start.getTime(), monthBounds.start.getTime()));
+    const end = new Date(Math.min(week.end.getTime(), monthBounds.end.getTime()));
+    buckets.push({ label: `${start.getDate()}-${end.getDate()}`, value: takeHome(entriesBetween(start, end)) });
+    cursor = new Date(end);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return buckets;
+}
+
+function renderChart(buckets) {
+  const max = Math.max(1, ...buckets.map((bucket) => bucket.value));
+  const compactMoney = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 });
+  elements.earningsChart.replaceChildren(...buckets.map((bucket) => {
+    const column = document.createElement("div");
+    column.className = "chart-column";
+    const value = document.createElement("span");
+    value.className = "chart-value";
+    value.textContent = bucket.value > 0 ? compactMoney.format(bucket.value) : "$0";
+    const wrap = document.createElement("div");
+    wrap.className = "chart-bar-wrap";
+    const bar = document.createElement("span");
+    bar.className = "chart-bar";
+    bar.style.height = `${Math.max(3, (bucket.value / max) * 100)}%`;
+    bar.title = `${bucket.label}: ${money.format(bucket.value)}`;
+    const label = document.createElement("span");
+    label.className = "chart-label";
+    label.textContent = bucket.label;
+    wrap.append(bar);
+    column.append(value, wrap, label);
+    return column;
+  }));
+  elements.earningsChart.setAttribute("aria-label", buckets.map((bucket) => `${bucket.label}: ${money.format(bucket.value)}`).join(", "));
+}
+
+function renderSummary() {
+  const date = selectedSummaryDate();
+  const bounds = summaryPeriod === "month" ? getMonthBounds(date) : getYearBounds(date);
+  const list = entriesBetween(bounds.start, bounds.end);
+  const earnings = takeHome(list);
+  const hours = totalHours(list);
+  const goal = summaryPeriod === "month" ? goals.monthly : null;
+
+  elements.monthPeriodButton.classList.toggle("active", summaryPeriod === "month");
+  elements.yearPeriodButton.classList.toggle("active", summaryPeriod === "year");
+  elements.nextSummaryButton.disabled = summaryOffset === 0;
+  elements.summaryHeading.textContent = summaryPeriod === "month"
+    ? date.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+    : String(date.getFullYear());
+  elements.summaryShiftCount.textContent = `${list.length} ${list.length === 1 ? "shift" : "shifts"}`;
+  elements.summaryTakeHome.textContent = money.format(earnings);
+  elements.summarySales.textContent = wholeMoney.format(sum(list, "sales"));
+  elements.summaryTips.textContent = wholeMoney.format(sum(list, "tips"));
+  elements.summaryHours.textContent = `${hours.toFixed(hours % 1 ? 1 : 0)}h`;
+  elements.summaryHourly.textContent = money.format(hourlyEarnings(list));
+  elements.summaryGoalWrap.hidden = !goal;
+  if (goal) {
+    const percent = Math.min(100, (earnings / goal) * 100);
+    elements.summaryGoalLabel.textContent = `${Math.round(percent)}% of monthly goal`;
+    elements.summaryGoalValue.textContent = `${money.format(earnings)} / ${money.format(goal)}`;
+    elements.summaryGoalProgress.style.width = `${percent}%`;
+  }
+
+  const buckets = createChartBuckets(date);
+  elements.chartTitle.textContent = summaryPeriod === "month" ? "Earnings by week" : "Earnings by month";
+  elements.chartRange.textContent = summaryPeriod === "month" ? "days of month" : String(date.getFullYear());
+  elements.earningsChart.classList.toggle("year-chart", summaryPeriod === "year");
+  renderChart(buckets);
+}
+
 function render() {
   const now = new Date();
   const selectedDate = new Date(now);
   selectedDate.setDate(selectedDate.getDate() - selectedWeekOffset * 7);
   const { start, end } = getWeekBounds(selectedDate);
   const currentWeekStart = getWeekBounds(now).start;
-  const thisWeek = entries.filter((entry) => {
-    const date = parseDate(entry.date);
-    return date >= start && date <= end;
-  });
+  const thisWeek = entriesBetween(start, end);
 
   const sales = sum(thisWeek, "sales");
   const tips = sum(thisWeek, "tips");
   const tipOut = sum(thisWeek, "tipOut");
   const takeHome = tips - tipOut;
+  const hours = totalHours(thisWeek);
 
   elements.todayLabel.textContent = now.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }).toUpperCase();
   elements.weekHeading.textContent = selectedWeekOffset === 0 ? "This week" : selectedWeekOffset === 1 ? "Last week" : `${selectedWeekOffset} weeks ago`;
@@ -262,12 +506,15 @@ function render() {
   elements.weekTipOut.textContent = wholeMoney.format(tipOut);
   elements.weekTipRate.textContent = formatRate(tipRate(tips, sales));
   elements.weekTipOutRate.textContent = formatRate(tipRate(tipOut, sales));
+  elements.weekHours.textContent = `${hours.toFixed(hours % 1 ? 1 : 0)} hrs`;
+  elements.weekHourly.textContent = money.format(hourlyEarnings(thisWeek));
   elements.shiftCount.textContent = `${thisWeek.length} ${thisWeek.length === 1 ? "shift" : "shifts"}`;
-  elements.weekProgress.style.width = selectedWeekOffset === 0 ? `${Math.min(100, ((now.getDay() || 7) / 7) * 100)}%` : "100%";
+  const weeklyProgress = goals.weekly ? Math.min(100, (takeHome / goals.weekly) * 100) : (selectedWeekOffset === 0 ? Math.min(100, ((now.getDay() || 7) / 7) * 100) : 100);
+  elements.weekProgress.style.width = `${weeklyProgress}%`;
+  elements.goalButton.textContent = goals.weekly ? `${Math.round(weeklyProgress)}% of ${wholeMoney.format(goals.weekly)} goal` : "Set goals";
 
   const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
   elements.emptyState.hidden = sorted.length > 0;
-  elements.clearButton.hidden = sorted.length === 0;
   const groups = new Map();
   sorted.forEach((entry) => {
     const bounds = getWeekBounds(parseDate(entry.date));
@@ -276,6 +523,7 @@ function render() {
     groups.get(key).entries.push(entry);
   });
   elements.shiftList.replaceChildren(...[...groups.values()].map((group) => createWeekGroup(group, currentWeekStart)));
+  renderSummary();
 }
 
 function createWeekGroup(group, currentWeekStart) {
@@ -322,8 +570,15 @@ function createShiftRow(entry) {
   const title = document.createElement("strong");
   title.textContent = date.toLocaleDateString("en-US", { weekday: "long" });
   const breakdown = document.createElement("p");
-  breakdown.textContent = `${wholeMoney.format(entry.sales)} sales - ${formatRate(tipRate(entry.tips, entry.sales))} tips - ${formatRate(tipRate(entry.tipOut, entry.sales))} tip out`;
+  const hoursText = entry.hours ? ` - ${entry.hours.toFixed(entry.hours % 1 ? 1 : 0)} hrs - ${money.format((entry.tips - entry.tipOut) / entry.hours)}/hr` : "";
+  breakdown.textContent = `${wholeMoney.format(entry.sales)} sales - ${formatRate(tipRate(entry.tips, entry.sales))} tips - ${formatRate(tipRate(entry.tipOut, entry.sales))} tip out${hoursText}`;
   details.append(title, breakdown);
+  if (entry.notes) {
+    const note = document.createElement("p");
+    note.className = "shift-note";
+    note.textContent = entry.notes;
+    details.append(note);
+  }
 
   const result = document.createElement("div");
   result.className = "shift-result";
@@ -367,6 +622,8 @@ async function submitShift(event) {
   const sales = parseAmount(elements.salesInput.value);
   const tips = parseAmount(elements.tipsInput.value);
   const tipOut = parseAmount(elements.tipOutInput.value);
+  const hours = Number(elements.hoursInput.value);
+  const notes = elements.notesInput.value.trim();
 
   if (![sales, tips, tipOut].every((value) => Number.isFinite(value) && value >= 0)) {
     elements.formError.textContent = "Enter a valid amount in each field.";
@@ -374,6 +631,10 @@ async function submitShift(event) {
   }
   if (tipOut > tips) {
     elements.formError.textContent = "Tip out cannot be more than your total tips.";
+    return;
+  }
+  if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
+    elements.formError.textContent = "Enter hours worked between 0.25 and 24.";
     return;
   }
 
@@ -386,9 +647,11 @@ async function submitShift(event) {
       shift_date: elements.shiftDate.value,
       sales: Math.round(sales * 100) / 100,
       tips: Math.round(tips * 100) / 100,
-      tip_out: Math.round(tipOut * 100) / 100
+      tip_out: Math.round(tipOut * 100) / 100,
+      hours_worked: Math.round(hours * 100) / 100,
+      notes: notes || null
     })
-    .select("id, shift_date, sales, tips, tip_out, created_at")
+    .select("id, shift_date, sales, tips, tip_out, hours_worked, notes, created_at")
     .single();
   saveButton.disabled = false;
 
@@ -398,6 +661,7 @@ async function submitShift(event) {
   }
 
   entries.push(normalizeEntry(data));
+  dataVersion += 1;
   render();
   elements.shiftDialog.close();
 }
@@ -412,20 +676,88 @@ async function deleteEntry(id) {
   }
 
   entries = entries.filter((entry) => entry.id !== id);
+  dataVersion += 1;
   render();
 }
 
-async function clearEntries() {
-  if (!confirm("Delete all of your shift history? This cannot be undone.")) return;
-  const { error } = await supabaseClient.from("shifts").delete().eq("user_id", currentUser.id);
+function openGoalDialog() {
+  elements.weeklyGoalInput.value = goals.weekly || "";
+  elements.monthlyGoalInput.value = goals.monthly || "";
+  elements.goalError.textContent = "";
+  elements.goalDialog.showModal();
+}
 
+async function saveGoals(event) {
+  event.preventDefault();
+  const weekly = elements.weeklyGoalInput.value === "" ? null : Number(elements.weeklyGoalInput.value);
+  const monthly = elements.monthlyGoalInput.value === "" ? null : Number(elements.monthlyGoalInput.value);
+  if ([weekly, monthly].some((value) => value !== null && (!Number.isFinite(value) || value <= 0))) {
+    elements.goalError.textContent = "Goals must be positive amounts or left blank.";
+    return;
+  }
+
+  const saveButton = elements.goalForm.querySelector(".save-button");
+  saveButton.disabled = true;
+  const { error } = await supabaseClient.from("user_goals").upsert({
+    user_id: currentUser.id,
+    weekly_take_home: weekly,
+    monthly_take_home: monthly,
+    updated_at: new Date().toISOString()
+  });
+  saveButton.disabled = false;
   if (error) {
-    alert(`Could not clear your shifts: ${error.message}`);
+    elements.goalError.textContent = error.message;
+    return;
+  }
+
+  goals = { weekly, monthly };
+  dataVersion += 1;
+  render();
+  elements.goalDialog.close();
+}
+
+async function signOut() {
+  const { error } = await supabaseClient.auth.signOut();
+  if (error) {
+    if (elements.accountDialog.open) elements.accountError.textContent = error.message;
+    else showSyncStatus(`Could not sign out: ${error.message}`);
+    return;
+  }
+  if (elements.accountDialog.open) elements.accountDialog.close();
+}
+
+async function deleteAllData() {
+  if (!confirm("Delete every shift, note, hour entry, and goal? Your account will remain active.")) return;
+  elements.accountError.textContent = "";
+  const { error } = await supabaseClient.rpc("delete_my_app_data");
+  if (error) {
+    elements.accountError.textContent = error.message;
     return;
   }
 
   entries = [];
+  goals = { weekly: null, monthly: null };
+  dataVersion += 1;
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
   render();
+  elements.accountDialog.close();
+}
+
+async function deleteAccount() {
+  if (prompt("This permanently deletes your account and all data. Type DELETE to continue.") !== "DELETE") return;
+  elements.accountError.textContent = "";
+  const deleteButton = $("#deleteAccountButton");
+  deleteButton.disabled = true;
+  const { error } = await supabaseClient.functions.invoke("delete-account");
+  deleteButton.disabled = false;
+  if (error) {
+    elements.accountError.textContent = error.message;
+    return;
+  }
+
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
+  await supabaseClient.auth.signOut({ scope: "local" });
+  window.location.reload();
 }
 
 function closeOnBackdrop(event) {
@@ -433,7 +765,36 @@ function closeOnBackdrop(event) {
 }
 
 elements.emailAuthForm.addEventListener("submit", sendSignInLink);
-$("#signOutButton").addEventListener("click", () => supabaseClient.auth.signOut());
+$("#signOutButton").addEventListener("click", signOut);
+$("#accountSignOutButton").addEventListener("click", signOut);
+$("#accountButton").addEventListener("click", () => {
+  elements.accountError.textContent = "";
+  elements.accountDialog.showModal();
+});
+$("#closeAccountButton").addEventListener("click", () => elements.accountDialog.close());
+$("#deleteDataButton").addEventListener("click", deleteAllData);
+$("#deleteAccountButton").addEventListener("click", deleteAccount);
+elements.goalButton.addEventListener("click", openGoalDialog);
+$("#closeGoalButton").addEventListener("click", () => elements.goalDialog.close());
+elements.goalForm.addEventListener("submit", saveGoals);
+elements.monthPeriodButton.addEventListener("click", () => {
+  summaryPeriod = "month";
+  summaryOffset = 0;
+  renderSummary();
+});
+elements.yearPeriodButton.addEventListener("click", () => {
+  summaryPeriod = "year";
+  summaryOffset = 0;
+  renderSummary();
+});
+elements.previousSummaryButton.addEventListener("click", () => {
+  summaryOffset += 1;
+  renderSummary();
+});
+elements.nextSummaryButton.addEventListener("click", () => {
+  summaryOffset = Math.max(0, summaryOffset - 1);
+  renderSummary();
+});
 $("#addButton").addEventListener("click", openShiftForm);
 elements.previousWeekButton.addEventListener("click", () => {
   selectedWeekOffset += 1;
@@ -449,10 +810,11 @@ elements.tipsInput.addEventListener("input", updatePreview);
 elements.tipOutInput.addEventListener("input", updatePreview);
 elements.shiftDialog.addEventListener("click", closeOnBackdrop);
 elements.infoDialog.addEventListener("click", closeOnBackdrop);
+elements.goalDialog.addEventListener("click", closeOnBackdrop);
+elements.accountDialog.addEventListener("click", closeOnBackdrop);
 $("#infoButton").addEventListener("click", () => elements.infoDialog.showModal());
 $("#closeInfoButton").addEventListener("click", () => elements.infoDialog.close());
 $("#gotItButton").addEventListener("click", () => elements.infoDialog.close());
-elements.clearButton.addEventListener("click", clearEntries);
 
 async function initialize() {
   const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
@@ -460,7 +822,7 @@ async function initialize() {
   await applySession(session);
 
   supabaseClient.auth.onAuthStateChange((event, nextSession) => {
-    if (event === "INITIAL_SESSION") return;
+    if (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") return;
     setTimeout(() => applySession(nextSession), 0);
   });
 }
@@ -470,3 +832,7 @@ initialize();
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js"));
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") refreshInBackground();
+});
