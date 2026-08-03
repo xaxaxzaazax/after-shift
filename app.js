@@ -732,7 +732,7 @@ function resetScanner() {
   elements.scanForm.reset();
   elements.scanPreview.hidden = true;
   elements.scanPreview.removeAttribute("src");
-  elements.scanUploadLabel.textContent = "Take photo or choose image";
+  elements.scanUploadLabel.textContent = "Add report photo";
   elements.analyzeReportButton.disabled = true;
   elements.analyzeReportButton.textContent = "Read report";
   elements.scanError.textContent = "";

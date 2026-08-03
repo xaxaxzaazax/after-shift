@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-180.png" />
-    <link rel="stylesheet" href="styles.css?v=14" />
+    <link rel="stylesheet" href="styles.css?v=15" />
     <title>After Shift</title>
   </head>
   <body>
@@ -242,17 +242,20 @@
         <button class="close-button" id="closeScanButton" type="button" aria-label="Close">×</button>
         <p class="eyebrow">SMART IMPORT</p>
         <h2>Scan your tip-out report</h2>
-        <p>Take a clear photo of the full report. You will review every amount before it is saved.</p>
+        <p>Use a clear photo of the full report. You will review every amount before it is saved.</p>
         <label class="scan-upload" for="reportImageInput">
-          <input id="reportImageInput" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" />
+          <input id="reportImageInput" type="file" accept="image/*" />
           <span class="scan-upload-mark" aria-hidden="true">
             <svg viewBox="0 0 24 24">
               <path d="M8.5 6 10 4h4l1.5 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5Z" />
               <circle cx="12" cy="12.5" r="3.5" />
             </svg>
           </span>
-          <strong id="scanUploadLabel">Take photo or choose image</strong>
-          <small>JPEG, PNG, or WebP</small>
+          <span class="scan-upload-copy">
+            <strong id="scanUploadLabel">Add report photo</strong>
+            <small>Camera or Photo Library</small>
+          </span>
+          <span class="scan-upload-arrow" aria-hidden="true">›</span>
         </label>
         <img id="scanPreview" class="scan-preview" alt="Selected tip-out report" hidden />
         <p id="scanError" class="form-error" role="alert"></p>
@@ -309,6 +312,6 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0/dist/umd/supabase.min.js" integrity="sha384-fPWur1rx/DE6YtXP/x0MD6dd90RgnVsz5yX/DIg7CcVAnTBZsENWuIcpvVTM39ti" crossorigin="anonymous" defer></script>
-    <script src="app.js?v=14" defer></script>
+    <script src="app.js?v=15" defer></script>
   </body>
 </html>
