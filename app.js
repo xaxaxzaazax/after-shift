@@ -53,8 +53,11 @@ const elements = {
   earningsChart: $("#earningsChart"),
   emptyState: $("#emptyState"),
   shiftList: $("#shiftList"),
+  homePage: $("#homePage"),
+  earningsPage: $("#earningsPage"),
+  homeTabButton: $("#homeTabButton"),
+  earningsTabButton: $("#earningsTabButton"),
   shiftDialog: $("#shiftDialog"),
-  infoDialog: $("#infoDialog"),
   goalDialog: $("#goalDialog"),
   accountDialog: $("#accountDialog"),
   goalForm: $("#goalForm"),
@@ -149,9 +152,9 @@ function normalizeEntry(row) {
   return {
     id: row.id,
     date: row.shift_date,
-    sales: Number(row.sales),
+    sales: row.sales == null ? null : Number(row.sales),
     tips: Number(row.tips),
-    tipOut: Number(row.tip_out),
+    tipOut: row.tip_out == null ? 0 : Number(row.tip_out),
     hours: row.hours_worked == null ? null : Number(row.hours_worked),
     notes: row.notes || "",
     createdAt: new Date(row.created_at).getTime()
@@ -260,7 +263,7 @@ async function applySession(session) {
   currentUser = nextUser;
   elements.authView.hidden = Boolean(currentUser);
   elements.appView.hidden = !sameLoadedUser;
-  elements.bottomAction.hidden = !sameLoadedUser;
+  elements.bottomAction.hidden = !sameLoadedUser || elements.homePage.hidden;
   setAuthBusy(false);
 
   if (!currentUser) {
@@ -269,7 +272,6 @@ async function applySession(session) {
     loadedUserId = null;
     lastLoadedAt = 0;
     if (elements.shiftDialog.open) elements.shiftDialog.close();
-    if (elements.infoDialog.open) elements.infoDialog.close();
     if (elements.goalDialog.open) elements.goalDialog.close();
     if (elements.accountDialog.open) elements.accountDialog.close();
     render();
@@ -295,12 +297,12 @@ async function applySession(session) {
     lastLoadedAt = Date.now();
     render();
     elements.appView.hidden = false;
-    elements.bottomAction.hidden = false;
+    showPage("home");
     if (version === sessionVersion && elements.syncStatus.textContent === "Loading your shifts...") showSyncStatus("");
   } catch (error) {
     if (version === sessionVersion) {
       elements.appView.hidden = false;
-      elements.bottomAction.hidden = false;
+      showPage("home");
       showSyncStatus(`Could not load your shifts: ${error.message}`);
     }
   }
@@ -358,7 +360,11 @@ function getYearBounds(date = new Date()) {
 }
 
 function sum(list, field) {
-  return list.reduce((total, item) => total + item[field], 0);
+  return list.reduce((total, item) => total + (item[field] || 0), 0);
+}
+
+function salesEntries(list) {
+  return list.filter((entry) => entry.sales != null);
 }
 
 function tipRate(tips, sales) {
@@ -461,12 +467,13 @@ function renderSummary() {
   elements.summaryHeading.textContent = summaryPeriod === "month"
     ? date.toLocaleDateString("en-US", { month: "long", year: "numeric" })
     : String(date.getFullYear());
+  const withSales = salesEntries(list);
   elements.summaryShiftCount.textContent = `${list.length} ${list.length === 1 ? "shift" : "shifts"}`;
   elements.summaryTakeHome.textContent = money.format(earnings);
-  elements.summarySales.textContent = wholeMoney.format(sum(list, "sales"));
+  elements.summarySales.textContent = withSales.length ? wholeMoney.format(sum(withSales, "sales")) : "—";
   elements.summaryTips.textContent = wholeMoney.format(sum(list, "tips"));
-  elements.summaryHours.textContent = `${hours.toFixed(hours % 1 ? 1 : 0)}h`;
-  elements.summaryHourly.textContent = money.format(hourlyEarnings(list));
+  elements.summaryHours.textContent = hours > 0 ? `${hours.toFixed(hours % 1 ? 1 : 0)}h` : "—";
+  elements.summaryHourly.textContent = hourlyEarnings(list) > 0 ? money.format(hourlyEarnings(list)) : "—";
   elements.summaryGoalWrap.hidden = !goal;
   if (goal) {
     const percent = Math.min(100, (earnings / goal) * 100);
@@ -490,7 +497,10 @@ function render() {
   const currentWeekStart = getWeekBounds(now).start;
   const thisWeek = entriesBetween(start, end);
 
-  const sales = sum(thisWeek, "sales");
+  const withSales = salesEntries(thisWeek);
+  const sales = sum(withSales, "sales");
+  const salesTips = sum(withSales, "tips");
+  const salesTipOut = sum(withSales, "tipOut");
   const tips = sum(thisWeek, "tips");
   const tipOut = sum(thisWeek, "tipOut");
   const takeHome = tips - tipOut;
@@ -501,13 +511,13 @@ function render() {
   elements.nextWeekButton.disabled = selectedWeekOffset === 0;
   elements.weekRange.textContent = `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
   elements.weekTakeHome.textContent = money.format(takeHome);
-  elements.weekSales.textContent = wholeMoney.format(sales);
+  elements.weekSales.textContent = withSales.length ? wholeMoney.format(sales) : "—";
   elements.weekTips.textContent = wholeMoney.format(tips);
-  elements.weekTipOut.textContent = wholeMoney.format(tipOut);
-  elements.weekTipRate.textContent = formatRate(tipRate(tips, sales));
-  elements.weekTipOutRate.textContent = formatRate(tipRate(tipOut, sales));
-  elements.weekHours.textContent = `${hours.toFixed(hours % 1 ? 1 : 0)} hrs`;
-  elements.weekHourly.textContent = money.format(hourlyEarnings(thisWeek));
+  elements.weekTipOut.textContent = tipOut > 0 ? wholeMoney.format(tipOut) : "—";
+  elements.weekTipRate.textContent = withSales.length ? formatRate(tipRate(salesTips, sales)) : "—";
+  elements.weekTipOutRate.textContent = withSales.length ? formatRate(tipRate(salesTipOut, sales)) : "—";
+  elements.weekHours.textContent = hours > 0 ? `${hours.toFixed(hours % 1 ? 1 : 0)} hrs` : "—";
+  elements.weekHourly.textContent = hourlyEarnings(thisWeek) > 0 ? money.format(hourlyEarnings(thisWeek)) : "—";
   elements.shiftCount.textContent = `${thisWeek.length} ${thisWeek.length === 1 ? "shift" : "shifts"}`;
   const weeklyProgress = goals.weekly ? Math.min(100, (takeHome / goals.weekly) * 100) : (selectedWeekOffset === 0 ? Math.min(100, ((now.getDay() || 7) / 7) * 100) : 100);
   elements.weekProgress.style.width = `${weeklyProgress}%`;
@@ -570,8 +580,17 @@ function createShiftRow(entry) {
   const title = document.createElement("strong");
   title.textContent = date.toLocaleDateString("en-US", { weekday: "long" });
   const breakdown = document.createElement("p");
-  const hoursText = entry.hours ? ` - ${entry.hours.toFixed(entry.hours % 1 ? 1 : 0)} hrs - ${money.format((entry.tips - entry.tipOut) / entry.hours)}/hr` : "";
-  breakdown.textContent = `${wholeMoney.format(entry.sales)} sales - ${formatRate(tipRate(entry.tips, entry.sales))} tips - ${formatRate(tipRate(entry.tipOut, entry.sales))} tip out${hoursText}`;
+  const parts = [];
+  if (entry.sales != null) {
+    parts.push(`${wholeMoney.format(entry.sales)} sales`);
+    parts.push(`${formatRate(tipRate(entry.tips, entry.sales))} tips`);
+    if (entry.tipOut > 0) parts.push(`${formatRate(tipRate(entry.tipOut, entry.sales))} tip out`);
+  } else {
+    parts.push(`${money.format(entry.tips)} tips`);
+    if (entry.tipOut > 0) parts.push(`${money.format(entry.tipOut)} tip out`);
+  }
+  if (entry.hours) parts.push(`${entry.hours.toFixed(entry.hours % 1 ? 1 : 0)} hrs - ${money.format((entry.tips - entry.tipOut) / entry.hours)}/hr`);
+  breakdown.textContent = parts.join(" - ");
   details.append(title, breakdown);
   if (entry.notes) {
     const note = document.createElement("p");
@@ -614,27 +633,35 @@ function openShiftForm() {
   elements.formError.textContent = "";
   updatePreview();
   elements.shiftDialog.showModal();
-  setTimeout(() => elements.salesInput.focus(), 150);
+  setTimeout(() => elements.tipsInput.focus(), 150);
 }
 
 async function submitShift(event) {
   event.preventDefault();
-  const sales = parseAmount(elements.salesInput.value);
   const tips = parseAmount(elements.tipsInput.value);
-  const tipOut = parseAmount(elements.tipOutInput.value);
-  const hours = Number(elements.hoursInput.value);
+  const sales = elements.salesInput.value.trim() === "" ? null : parseAmount(elements.salesInput.value);
+  const tipOut = elements.tipOutInput.value.trim() === "" ? 0 : parseAmount(elements.tipOutInput.value);
+  const hours = elements.hoursInput.value.trim() === "" ? null : Number(elements.hoursInput.value);
   const notes = elements.notesInput.value.trim();
 
-  if (![sales, tips, tipOut].every((value) => Number.isFinite(value) && value >= 0)) {
-    elements.formError.textContent = "Enter a valid amount in each field.";
+  if (!Number.isFinite(tips) || tips < 0) {
+    elements.formError.textContent = "Enter your total tips (0 is fine).";
+    return;
+  }
+  if (sales !== null && (!Number.isFinite(sales) || sales < 0)) {
+    elements.formError.textContent = "Total sales must be a valid amount, or leave it blank.";
+    return;
+  }
+  if (!Number.isFinite(tipOut) || tipOut < 0) {
+    elements.formError.textContent = "Tip out must be a valid amount, or leave it blank.";
     return;
   }
   if (tipOut > tips) {
     elements.formError.textContent = "Tip out cannot be more than your total tips.";
     return;
   }
-  if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
-    elements.formError.textContent = "Enter hours worked between 0.25 and 24.";
+  if (hours !== null && (!Number.isFinite(hours) || hours <= 0 || hours > 24)) {
+    elements.formError.textContent = "Hours worked must be between 0.25 and 24, or leave it blank.";
     return;
   }
 
@@ -645,10 +672,10 @@ async function submitShift(event) {
     .from("shifts")
     .insert({
       shift_date: elements.shiftDate.value,
-      sales: Math.round(sales * 100) / 100,
+      sales: sales === null ? null : Math.round(sales * 100) / 100,
       tips: Math.round(tips * 100) / 100,
-      tip_out: Math.round(tipOut * 100) / 100,
-      hours_worked: Math.round(hours * 100) / 100,
+      tip_out: tipOut > 0 ? Math.round(tipOut * 100) / 100 : null,
+      hours_worked: hours === null ? null : Math.round(hours * 100) / 100,
       notes: notes || null
     })
     .select("id, shift_date, sales, tips, tip_out, hours_worked, notes, created_at")
@@ -764,8 +791,19 @@ function closeOnBackdrop(event) {
   if (event.target === event.currentTarget) event.currentTarget.close();
 }
 
+function showPage(page) {
+  const isHome = page === "home";
+  elements.homePage.hidden = !isHome;
+  elements.earningsPage.hidden = isHome;
+  elements.homeTabButton.classList.toggle("active", isHome);
+  elements.earningsTabButton.classList.toggle("active", !isHome);
+  elements.bottomAction.hidden = !isHome || !currentUser;
+  if (!isHome) renderSummary();
+}
+
+elements.homeTabButton.addEventListener("click", () => showPage("home"));
+elements.earningsTabButton.addEventListener("click", () => showPage("earnings"));
 elements.emailAuthForm.addEventListener("submit", sendSignInLink);
-$("#signOutButton").addEventListener("click", signOut);
 $("#accountSignOutButton").addEventListener("click", signOut);
 $("#accountButton").addEventListener("click", () => {
   elements.accountError.textContent = "";
@@ -809,12 +847,8 @@ elements.shiftForm.addEventListener("submit", submitShift);
 elements.tipsInput.addEventListener("input", updatePreview);
 elements.tipOutInput.addEventListener("input", updatePreview);
 elements.shiftDialog.addEventListener("click", closeOnBackdrop);
-elements.infoDialog.addEventListener("click", closeOnBackdrop);
 elements.goalDialog.addEventListener("click", closeOnBackdrop);
 elements.accountDialog.addEventListener("click", closeOnBackdrop);
-$("#infoButton").addEventListener("click", () => elements.infoDialog.showModal());
-$("#closeInfoButton").addEventListener("click", () => elements.infoDialog.close());
-$("#gotItButton").addEventListener("click", () => elements.infoDialog.close());
 
 async function initialize() {
   const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
