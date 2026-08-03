@@ -740,7 +740,20 @@ function resetScanner() {
 
 function openScanner() {
   resetScanner();
-  elements.scanDialog.showModal();
+  if (typeof elements.scanDialog.showModal === "function") {
+    try {
+      elements.scanDialog.showModal();
+      return;
+    } catch {
+      // Fall through for older or embedded mobile browsers.
+    }
+  }
+  elements.scanDialog.setAttribute("open", "");
+}
+
+function closeScanner() {
+  if (typeof elements.scanDialog.close === "function") elements.scanDialog.close();
+  else elements.scanDialog.removeAttribute("open");
 }
 
 async function resizeReportImage(file) {
@@ -827,7 +840,7 @@ async function scanReport(event) {
   }
 
   const fields = data.fields;
-  elements.scanDialog.close();
+  closeScanner();
   resetScanner();
   openShiftForm(fields);
 }
@@ -1041,7 +1054,7 @@ elements.nextSummaryButton.addEventListener("click", () => {
 });
 $("#addButton").addEventListener("click", () => openShiftForm());
 $("#reportScanButton").addEventListener("click", openScanner);
-$("#closeScanButton").addEventListener("click", () => elements.scanDialog.close());
+$("#closeScanButton").addEventListener("click", closeScanner);
 elements.reportImageInput.addEventListener("change", selectReportImage);
 elements.scanForm.addEventListener("submit", scanReport);
 elements.previousWeekButton.addEventListener("click", () => {
