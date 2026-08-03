@@ -13,9 +13,17 @@ const elements = {
   bottomAction: $("#bottomAction"),
   emailAuthForm: $("#emailAuthForm"),
   authEmail: $("#authEmail"),
+  authPassword: $("#authPassword"),
+  authCopy: $("#authCopy"),
+  authModeButton: $("#authModeButton"),
+  forgotPasswordButton: $("#forgotPasswordButton"),
   emailLoginButton: $("#emailLoginButton"),
   authError: $("#authError"),
   authMessage: $("#authMessage"),
+  resetDialog: $("#resetDialog"),
+  resetForm: $("#resetForm"),
+  newPasswordInput: $("#newPasswordInput"),
+  resetError: $("#resetError"),
   syncStatus: $("#syncStatus"),
   todayLabel: $("#todayLabel"),
   weekRange: $("#weekRange"),
@@ -88,28 +96,10 @@ let backgroundRefresh = null;
 let dataVersion = 0;
 let goals = { weekly: null, monthly: null };
 const legacyMigrationAttemptedFor = new Set();
-let authCooldownTimer = null;
+let authMode = "login";
 
 function setAuthBusy(isBusy) {
   elements.emailLoginButton.disabled = isBusy;
-}
-
-function startAuthCooldown(seconds = 60) {
-  clearInterval(authCooldownTimer);
-  let remaining = seconds;
-  elements.emailLoginButton.disabled = true;
-  elements.emailLoginButton.textContent = `Send again in ${remaining}s`;
-  authCooldownTimer = setInterval(() => {
-    remaining -= 1;
-    if (remaining <= 0) {
-      clearInterval(authCooldownTimer);
-      authCooldownTimer = null;
-      elements.emailLoginButton.disabled = false;
-      elements.emailLoginButton.textContent = "Email me a sign-in link";
-      return;
-    }
-    elements.emailLoginButton.textContent = `Send again in ${remaining}s`;
-  }, 1000);
 }
 
 function showSyncStatus(message) {
@@ -117,35 +107,107 @@ function showSyncStatus(message) {
   elements.syncStatus.hidden = !message;
 }
 
-async function sendSignInLink(event) {
+function setAuthMode(mode) {
+  authMode = mode;
+  const isLogin = mode === "login";
+  elements.authCopy.textContent = isLogin
+    ? "Welcome back. Log in to see your shifts, goals, and earnings."
+    : "Create a free account to start tracking your tips, hours, and take-home pay.";
+  elements.emailLoginButton.textContent = isLogin ? "Log in" : "Create account";
+  elements.authModeButton.innerHTML = isLogin
+    ? "New here? <b>Create an account</b>"
+    : "Already have an account? <b>Log in</b>";
+  elements.authPassword.autocomplete = isLogin ? "current-password" : "new-password";
+  elements.forgotPasswordButton.hidden = !isLogin;
+  elements.authError.textContent = "";
+  elements.authMessage.textContent = "";
+}
+
+async function submitAuth(event) {
   event.preventDefault();
   setAuthBusy(true);
   elements.authError.textContent = "";
   elements.authMessage.textContent = "";
 
-  const emailRedirectTo = new URL("./", window.location.href).href;
-  const { error } = await supabaseClient.auth.signInWithOtp({
-    email: elements.authEmail.value.trim(),
-    options: {
-      emailRedirectTo,
-      shouldCreateUser: true
-    }
-  });
+  const email = elements.authEmail.value.trim();
+  const password = elements.authPassword.value;
 
-  if (error) {
-    if (error.status === 429 || error.code === "over_email_send_rate_limit") {
-      elements.authError.textContent = "Please wait 60 seconds before requesting another link. If this continues, the test email allowance may need up to an hour to reset.";
-      startAuthCooldown();
-      return;
+  if (authMode === "signup") {
+    const emailRedirectTo = new URL("./", window.location.href).href;
+    const { data, error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo }
+    });
+
+    if (error) {
+      elements.authError.textContent = error.message;
+    } else if (data.user && !data.session) {
+      elements.authMessage.textContent = "Almost there! Check your email and confirm your address to finish signing up.";
     }
-    elements.authError.textContent = error.message;
-  } else {
-    elements.authMessage.textContent = "Check your email and open the secure sign-in link.";
-    startAuthCooldown();
+    setAuthBusy(false);
     return;
   }
 
-  setAuthBusy(false);
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    if (error.code === "invalid_credentials") {
+      elements.authError.textContent = "Wrong email or password. If you signed up before passwords existed, tap \"Forgot password?\" to set one.";
+    } else if (error.code === "email_not_confirmed") {
+      elements.authError.textContent = "Please confirm your email first - check your inbox for the confirmation link.";
+    } else {
+      elements.authError.textContent = error.message;
+    }
+    setAuthBusy(false);
+  }
+}
+
+async function sendPasswordReset() {
+  const email = elements.authEmail.value.trim();
+  elements.authError.textContent = "";
+  elements.authMessage.textContent = "";
+
+  if (!email) {
+    elements.authError.textContent = "Enter your email address above first, then tap Forgot password.";
+    elements.authEmail.focus();
+    return;
+  }
+
+  elements.forgotPasswordButton.disabled = true;
+  const redirectTo = new URL("./", window.location.href).href;
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+  elements.forgotPasswordButton.disabled = false;
+
+  if (error) {
+    if (error.status === 429) {
+      elements.authError.textContent = "Please wait a minute before requesting another reset email.";
+    } else {
+      elements.authError.textContent = error.message;
+    }
+    return;
+  }
+
+  elements.authMessage.textContent = "Check your email for a link to reset your password.";
+}
+
+async function saveNewPassword(event) {
+  event.preventDefault();
+  elements.resetError.textContent = "";
+  const saveButton = elements.resetForm.querySelector(".save-button");
+  saveButton.disabled = true;
+  const { error } = await supabaseClient.auth.updateUser({ password: elements.newPasswordInput.value });
+  saveButton.disabled = false;
+
+  if (error) {
+    elements.resetError.textContent = error.message;
+    return;
+  }
+
+  elements.resetForm.reset();
+  elements.resetDialog.close();
+  showSyncStatus("Your password has been updated.");
+  setTimeout(() => showSyncStatus(""), 3500);
 }
 
 function normalizeEntry(row) {
@@ -274,6 +336,7 @@ async function applySession(session) {
     if (elements.shiftDialog.open) elements.shiftDialog.close();
     if (elements.goalDialog.open) elements.goalDialog.close();
     if (elements.accountDialog.open) elements.accountDialog.close();
+    if (elements.resetDialog.open) elements.resetDialog.close();
     render();
     showSyncStatus("");
     return;
@@ -810,7 +873,10 @@ function showPage(page) {
 
 elements.homeTabButton.addEventListener("click", () => showPage("home"));
 elements.earningsTabButton.addEventListener("click", () => showPage("earnings"));
-elements.emailAuthForm.addEventListener("submit", sendSignInLink);
+elements.emailAuthForm.addEventListener("submit", submitAuth);
+elements.authModeButton.addEventListener("click", () => setAuthMode(authMode === "login" ? "signup" : "login"));
+elements.forgotPasswordButton.addEventListener("click", sendPasswordReset);
+elements.resetForm.addEventListener("submit", saveNewPassword);
 $("#accountSignOutButton").addEventListener("click", signOut);
 $("#accountButton").addEventListener("click", () => {
   elements.accountError.textContent = "";
@@ -863,6 +929,15 @@ async function initialize() {
   await applySession(session);
 
   supabaseClient.auth.onAuthStateChange((event, nextSession) => {
+    if (event === "PASSWORD_RECOVERY") {
+      setTimeout(() => {
+        applySession(nextSession).then(() => {
+          elements.resetError.textContent = "";
+          elements.resetDialog.showModal();
+        });
+      }, 0);
+      return;
+    }
     if (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") return;
     setTimeout(() => applySession(nextSession), 0);
   });

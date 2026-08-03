@@ -72,6 +72,9 @@ button { color: inherit; }
 .email-login-button:disabled { opacity: .55; cursor: wait; }
 .auth-error { min-height: 18px; margin: 14px 0 0; color: #ac3d2b; font-size: .75rem; line-height: 1.4; }
 .auth-message { min-height: 18px; margin: 0; color: var(--green); font-size: .75rem; line-height: 1.4; }
+.auth-links { display: grid; gap: 8px; margin-top: 4px; }
+.auth-link { border: 0; background: transparent; color: var(--muted); font-size: .76rem; cursor: pointer; }
+.auth-link b { color: var(--green); }
 .privacy-note { margin: 8px auto 0; color: var(--muted); font-size: .68rem; line-height: 1.45; }
 
 .app-shell {

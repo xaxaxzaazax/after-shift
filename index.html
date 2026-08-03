@@ -22,16 +22,24 @@
         <div class="auth-mark">AS</div>
         <p class="eyebrow">AFTER SHIFT</p>
         <h1 id="authHeading">Your shifts, wherever you sign in.</h1>
-        <p class="auth-copy">Enter your email and we will send you a secure sign-in link. No password needed.</p>
+        <p class="auth-copy" id="authCopy">Welcome back. Log in to see your shifts, goals, and earnings.</p>
         <form class="auth-actions" id="emailAuthForm">
           <label class="auth-field">
             <span>Email address</span>
             <input id="authEmail" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required />
           </label>
-          <button class="email-login-button" id="emailLoginButton" type="submit">Email me a sign-in link</button>
+          <label class="auth-field">
+            <span>Password</span>
+            <input id="authPassword" name="password" type="password" autocomplete="current-password" placeholder="••••••••" minlength="8" required />
+          </label>
+          <button class="email-login-button" id="emailLoginButton" type="submit">Log in</button>
         </form>
         <p id="authError" class="auth-error" role="alert"></p>
         <p id="authMessage" class="auth-message" role="status"></p>
+        <div class="auth-links">
+          <button class="auth-link" id="authModeButton" type="button">New here? <b>Create an account</b></button>
+          <button class="auth-link" id="forgotPasswordButton" type="button">Forgot password?</button>
+        </div>
         <p class="privacy-note">We only use your login to keep your shift records connected to you.</p>
       </section>
     </main>
@@ -251,6 +259,20 @@
         </div>
         <p id="accountError" class="form-error" role="alert"></p>
       </div>
+    </dialog>
+
+    <dialog id="resetDialog" class="info-dialog settings-dialog">
+      <form id="resetForm" method="dialog">
+        <p class="eyebrow">RESET PASSWORD</p>
+        <h2>Choose a new password</h2>
+        <p>Enter a new password for your account. You'll stay signed in after saving.</p>
+        <label class="settings-field">
+          <span>New password</span>
+          <div><input id="newPasswordInput" type="password" autocomplete="new-password" placeholder="At least 8 characters" minlength="8" required /></div>
+        </label>
+        <p id="resetError" class="form-error" role="alert"></p>
+        <button class="save-button" type="submit">Save new password</button>
+      </form>
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0/dist/umd/supabase.min.js" integrity="sha384-fPWur1rx/DE6YtXP/x0MD6dd90RgnVsz5yX/DIg7CcVAnTBZsENWuIcpvVTM39ti" crossorigin="anonymous" defer></script>
