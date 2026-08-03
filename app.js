@@ -68,14 +68,8 @@ const elements = {
   shiftDialog: $("#shiftDialog"),
   goalDialog: $("#goalDialog"),
   accountDialog: $("#accountDialog"),
-  scanDialog: $("#scanDialog"),
-  scanForm: $("#scanForm"),
+  reportScanButton: $("#reportScanButton"),
   reportImageInput: $("#reportImageInput"),
-  scanPreview: $("#scanPreview"),
-  scanUploadLabel: $("#scanUploadLabel"),
-  analyzeReportButton: $("#analyzeReportButton"),
-  scanError: $("#scanError"),
-  scanStatus: $("#scanStatus"),
   scanNotice: $("#scanNotice"),
   goalForm: $("#goalForm"),
   weeklyGoalInput: $("#weeklyGoalInput"),
@@ -346,7 +340,6 @@ async function applySession(session) {
     if (elements.shiftDialog.open) elements.shiftDialog.close();
     if (elements.goalDialog.open) elements.goalDialog.close();
     if (elements.accountDialog.open) elements.accountDialog.close();
-    if (elements.scanDialog.open) elements.scanDialog.close();
     if (elements.resetDialog.open) elements.resetDialog.close();
     render();
     showSyncStatus("");
@@ -730,36 +723,14 @@ function openShiftForm(scannedFields = null) {
 
 function resetScanner() {
   selectedReportImage = null;
-  elements.scanDialog.classList.remove("has-image");
-  elements.scanForm.reset();
-  elements.scanPreview.hidden = true;
-  elements.scanPreview.removeAttribute("src");
-  elements.scanUploadLabel.textContent = "Add report photo";
-  elements.analyzeReportButton.hidden = true;
-  elements.analyzeReportButton.disabled = false;
-  elements.analyzeReportButton.textContent = "Try scanning again";
-  elements.scanStatus.hidden = true;
-  elements.scanError.textContent = "";
+  elements.reportImageInput.value = "";
+  elements.reportScanButton.disabled = false;
 }
 
 function openScanner() {
   resetScanner();
-  let opened = false;
-  if (typeof elements.scanDialog.showModal === "function") {
-    try {
-      elements.scanDialog.showModal();
-      opened = true;
-    } catch {
-      // Fall through for older or embedded mobile browsers.
-    }
-  }
-  if (!opened) elements.scanDialog.setAttribute("open", "");
+  showSyncStatus("");
   elements.reportImageInput.click();
-}
-
-function closeScanner() {
-  if (typeof elements.scanDialog.close === "function") elements.scanDialog.close();
-  else elements.scanDialog.removeAttribute("open");
 }
 
 async function resizeReportImage(file) {
@@ -795,38 +766,31 @@ async function resizeReportImage(file) {
 async function selectReportImage() {
   const [file] = elements.reportImageInput.files;
   selectedReportImage = null;
-  elements.scanError.textContent = "";
-  elements.analyzeReportButton.disabled = true;
   if (!file) return;
   if (!file.type.startsWith("image/")) {
-    elements.scanError.textContent = "Choose a photo of the report.";
+    showSyncStatus("Choose a photo of the tip report.");
     return;
   }
   if (file.size > 20 * 1024 * 1024) {
-    elements.scanError.textContent = "Choose an image smaller than 20 MB.";
+    showSyncStatus("Choose a report photo smaller than 20 MB.");
     return;
   }
 
+  showSyncStatus("Preparing your report photo...");
   try {
     selectedReportImage = await resizeReportImage(file);
   } catch {
-    elements.scanError.textContent = "This image could not be opened. Try a JPEG or PNG photo.";
+    showSyncStatus("This photo could not be opened. Try taking another picture.");
     return;
   }
 
-  elements.scanDialog.classList.add("has-image");
-  elements.scanPreview.src = selectedReportImage;
-  elements.scanPreview.hidden = false;
-  elements.scanUploadLabel.textContent = file.name || "Photo selected";
   await scanSelectedReport();
 }
 
 async function scanSelectedReport() {
   if (!selectedReportImage) return;
-  elements.scanError.textContent = "";
-  elements.analyzeReportButton.disabled = true;
-  elements.analyzeReportButton.hidden = true;
-  elements.scanStatus.hidden = false;
+  elements.reportScanButton.disabled = true;
+  showSyncStatus("Reading the date and totals from your report...");
 
   let data;
   let error;
@@ -839,10 +803,8 @@ async function scanSelectedReport() {
       }
     }));
   } catch {
-    elements.scanStatus.hidden = true;
-    elements.scanError.textContent = "The report could not be scanned. Check your connection and try again.";
-    elements.analyzeReportButton.disabled = false;
-    elements.analyzeReportButton.hidden = false;
+    elements.reportScanButton.disabled = false;
+    showSyncStatus("The report could not be scanned. Check your connection and try again.");
     return;
   }
 
@@ -856,23 +818,15 @@ async function scanSelectedReport() {
         // Keep the generic function error when no JSON response is available.
       }
     }
-    elements.scanStatus.hidden = true;
-    elements.scanError.textContent = message;
-    elements.analyzeReportButton.disabled = false;
-    elements.analyzeReportButton.hidden = false;
-    elements.analyzeReportButton.textContent = "Try again";
+    elements.reportScanButton.disabled = false;
+    showSyncStatus(message);
     return;
   }
 
   const fields = data.fields;
-  closeScanner();
   resetScanner();
+  showSyncStatus("");
   openShiftForm(fields);
-}
-
-async function scanReport(event) {
-  event.preventDefault();
-  await scanSelectedReport();
 }
 
 async function submitShift(event) {
@@ -1083,10 +1037,8 @@ elements.nextSummaryButton.addEventListener("click", () => {
   renderSummary();
 });
 $("#addButton").addEventListener("click", () => openShiftForm());
-$("#reportScanButton").addEventListener("click", openScanner);
-$("#closeScanButton").addEventListener("click", closeScanner);
+elements.reportScanButton.addEventListener("click", openScanner);
 elements.reportImageInput.addEventListener("change", selectReportImage);
-elements.scanForm.addEventListener("submit", scanReport);
 elements.previousWeekButton.addEventListener("click", () => {
   selectedWeekOffset += 1;
   render();
@@ -1102,7 +1054,6 @@ elements.tipOutInput.addEventListener("input", updatePreview);
 elements.shiftDialog.addEventListener("click", closeOnBackdrop);
 elements.goalDialog.addEventListener("click", closeOnBackdrop);
 elements.accountDialog.addEventListener("click", closeOnBackdrop);
-elements.scanDialog.addEventListener("click", closeOnBackdrop);
 
 async function initialize() {
   const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();

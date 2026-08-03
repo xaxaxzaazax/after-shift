@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-180.png" />
-    <link rel="stylesheet" href="styles.css?v=16" />
+    <link rel="stylesheet" href="styles.css?v=17" />
     <title>After Shift</title>
   </head>
   <body>
@@ -173,6 +173,7 @@
       </section>
       </div>
 
+      <input class="report-image-input" id="reportImageInput" type="file" accept="image/*" tabindex="-1" aria-hidden="true" />
       <button class="scan-fab" id="reportScanButton" type="button" aria-label="Scan a tip-out report">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M8.5 6 10 4h4l1.5 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5Z" />
@@ -237,39 +238,6 @@
       </form>
     </dialog>
 
-    <dialog id="scanDialog" class="info-dialog scan-dialog">
-      <form id="scanForm" method="dialog">
-        <button class="close-button" id="closeScanButton" type="button" aria-label="Close">×</button>
-        <p class="eyebrow">SMART IMPORT</p>
-        <h2>Scan your tip report</h2>
-        <p>Take a clear picture of the whole report. We will read the date and shift totals, then let you review them before saving.</p>
-        <div class="scan-hero-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <path d="M8.5 6 10 4h4l1.5 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5Z" />
-            <circle cx="12" cy="12.5" r="3.5" />
-          </svg>
-        </div>
-        <label class="scan-upload" for="reportImageInput">
-          <input id="reportImageInput" type="file" accept="image/*" />
-          <span class="scan-upload-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path d="M8.5 6 10 4h4l1.5 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5Z" />
-              <circle cx="12" cy="12.5" r="3.5" />
-            </svg>
-          </span>
-          <span class="scan-upload-copy">
-            <strong id="scanUploadLabel">Add report photo</strong>
-            <small>Camera or Photo Library</small>
-          </span>
-          <span class="scan-upload-arrow" aria-hidden="true">›</span>
-        </label>
-        <img id="scanPreview" class="scan-preview" alt="Selected tip-out report" hidden />
-        <p id="scanStatus" class="scan-status" role="status" hidden>Reading your report...</p>
-        <p id="scanError" class="form-error" role="alert"></p>
-        <button class="save-button" id="analyzeReportButton" type="submit" hidden>Try scanning again</button>
-      </form>
-    </dialog>
-
     <dialog id="goalDialog" class="info-dialog settings-dialog">
       <form id="goalForm" method="dialog">
         <button class="close-button" id="closeGoalButton" type="button" aria-label="Close">×</button>
@@ -319,6 +287,6 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0/dist/umd/supabase.min.js" integrity="sha384-fPWur1rx/DE6YtXP/x0MD6dd90RgnVsz5yX/DIg7CcVAnTBZsENWuIcpvVTM39ti" crossorigin="anonymous" defer></script>
-    <script src="app.js?v=16" defer></script>
+    <script src="app.js?v=17" defer></script>
   </body>
 </html>

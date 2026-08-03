@@ -270,6 +270,8 @@ h1 { margin-bottom: 0; font-family: Georgia, serif; font-size: 2rem; letter-spac
 .scan-fab { position: fixed; z-index: 4; top: 46%; right: max(14px, calc((100vw - 620px) / 2)); display: grid; width: 58px; height: 58px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: var(--green); box-shadow: 0 14px 30px rgba(36,89,75,.25); color: white; cursor: pointer; transform: translateY(-50%); }
 .scan-fab svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 .scan-fab b { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.scan-fab:disabled { opacity: .55; cursor: wait; }
+.report-image-input { position: fixed; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
 .scan-notice { margin: -8px 0 18px; padding: 11px 12px; border-radius: 13px; background: var(--green-light); color: var(--green); font-size: .7rem; line-height: 1.45; }
 
 dialog { padding: 0; border: 0; }
@@ -328,26 +330,6 @@ dialog::backdrop { background: rgba(19,30,27,.54); backdrop-filter: blur(3px); }
 .danger-outline { border-color: rgba(172,61,43,.24); color: #923a2c; }
 .danger-solid { border-color: #9d3c2c; background: #9d3c2c; color: white; }
 .danger-solid small { color: rgba(255,255,255,.7); }
-.scan-dialog form { position: relative; padding: 30px 25px 24px; }
-.scan-dialog[open] { position: fixed; inset: 0; max-height: calc(100% - 40px); overflow-y: auto; }
-.scan-dialog .close-button { position: absolute; top: 14px; right: 14px; }
-.scan-dialog h2 { margin-bottom: 9px; font-family: Georgia, serif; }
-.scan-dialog form > p:not(.eyebrow):not(.form-error) { color: var(--muted); font-size: .8rem; line-height: 1.5; }
-.scan-hero-icon { display: grid; width: 92px; height: 92px; place-items: center; margin: 28px auto 22px; border-radius: 30px; background: var(--green-light); color: var(--green); transform: rotate(-3deg); }
-.scan-hero-icon svg { width: 42px; height: 42px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; }
-.scan-upload { display: grid; grid-template-columns: auto 1fr auto; min-height: 72px; align-items: center; gap: 12px; margin-top: 18px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 17px; background: #f7f3eb; color: var(--green); text-align: left; cursor: pointer; }
-.scan-upload input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
-.scan-upload:active { background: #eee9df; }
-.scan-upload-mark { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 13px; background: var(--green-light); }
-.scan-upload-mark svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
-.scan-upload-copy { min-width: 0; }
-.scan-upload-copy strong, .scan-upload-copy small { display: block; }
-.scan-upload-copy strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
-.scan-upload-copy small { margin-top: 3px; color: var(--muted); font-size: .65rem; }
-.scan-upload-arrow { color: #9b9f9c; font-size: 1.5rem; font-weight: 300; }
-.scan-preview { width: 100%; max-height: 230px; margin-top: 14px; border-radius: 16px; object-fit: contain; background: #eee8dd; }
-.scan-status { margin: 18px 0 8px !important; padding: 13px; border-radius: 14px; background: var(--green-light); color: var(--green) !important; font-weight: 750; text-align: center; }
-
 @media (min-width: 700px) {
   .app-shell { padding-top: 42px; }
   .sheet { margin-bottom: 20px; border-radius: 28px; }
@@ -364,14 +346,6 @@ dialog::backdrop { background: rgba(19,30,27,.54); backdrop-filter: blur(3px); }
 
 @media (max-width: 699px) {
   .scan-fab { top: auto; right: 18px; bottom: calc(env(safe-area-inset-bottom) + 84px); transform: none; }
-  .scan-dialog, .scan-dialog[open] { width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border-radius: 0; }
-  .scan-dialog form { display: flex; min-height: 100%; flex-direction: column; padding: calc(env(safe-area-inset-top) + 28px) 22px calc(env(safe-area-inset-bottom) + 24px); }
-  .scan-dialog .close-button { top: calc(env(safe-area-inset-top) + 14px); right: 16px; }
-  .scan-dialog h2 { max-width: 290px; margin-top: 22px; font-size: 2rem; line-height: 1.05; }
-  .scan-dialog form > p:not(.eyebrow):not(.form-error):not(.scan-status) { max-width: 330px; font-size: .88rem; }
-  .scan-dialog:not(.has-image) .scan-upload { margin-top: auto; }
-  .scan-dialog.has-image .scan-hero-icon { display: none; }
-  .scan-dialog.has-image .scan-upload { margin-top: 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
