@@ -75,6 +75,7 @@ const elements = {
   scanUploadLabel: $("#scanUploadLabel"),
   analyzeReportButton: $("#analyzeReportButton"),
   scanError: $("#scanError"),
+  scanStatus: $("#scanStatus"),
   scanNotice: $("#scanNotice"),
   goalForm: $("#goalForm"),
   weeklyGoalInput: $("#weeklyGoalInput"),
@@ -729,26 +730,31 @@ function openShiftForm(scannedFields = null) {
 
 function resetScanner() {
   selectedReportImage = null;
+  elements.scanDialog.classList.remove("has-image");
   elements.scanForm.reset();
   elements.scanPreview.hidden = true;
   elements.scanPreview.removeAttribute("src");
   elements.scanUploadLabel.textContent = "Add report photo";
-  elements.analyzeReportButton.disabled = true;
-  elements.analyzeReportButton.textContent = "Read report";
+  elements.analyzeReportButton.hidden = true;
+  elements.analyzeReportButton.disabled = false;
+  elements.analyzeReportButton.textContent = "Try scanning again";
+  elements.scanStatus.hidden = true;
   elements.scanError.textContent = "";
 }
 
 function openScanner() {
   resetScanner();
+  let opened = false;
   if (typeof elements.scanDialog.showModal === "function") {
     try {
       elements.scanDialog.showModal();
-      return;
+      opened = true;
     } catch {
       // Fall through for older or embedded mobile browsers.
     }
   }
-  elements.scanDialog.setAttribute("open", "");
+  if (!opened) elements.scanDialog.setAttribute("open", "");
+  elements.reportImageInput.click();
 }
 
 function closeScanner() {
@@ -803,25 +809,42 @@ async function selectReportImage() {
 
   try {
     selectedReportImage = await resizeReportImage(file);
-    elements.scanPreview.src = selectedReportImage;
-    elements.scanPreview.hidden = false;
-    elements.scanUploadLabel.textContent = file.name || "Photo selected";
-    elements.analyzeReportButton.disabled = false;
   } catch {
     elements.scanError.textContent = "This image could not be opened. Try a JPEG or PNG photo.";
+    return;
   }
+
+  elements.scanDialog.classList.add("has-image");
+  elements.scanPreview.src = selectedReportImage;
+  elements.scanPreview.hidden = false;
+  elements.scanUploadLabel.textContent = file.name || "Photo selected";
+  await scanSelectedReport();
 }
 
-async function scanReport(event) {
-  event.preventDefault();
+async function scanSelectedReport() {
   if (!selectedReportImage) return;
   elements.scanError.textContent = "";
   elements.analyzeReportButton.disabled = true;
-  elements.analyzeReportButton.textContent = "Reading report...";
+  elements.analyzeReportButton.hidden = true;
+  elements.scanStatus.hidden = false;
 
-  const { data, error } = await supabaseClient.functions.invoke("scan-tip-report", {
-    body: { image: selectedReportImage }
-  });
+  let data;
+  let error;
+  try {
+    ({ data, error } = await supabaseClient.functions.invoke("scan-tip-report", {
+      body: {
+        image: selectedReportImage,
+        currentDate: localDateString(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || null
+      }
+    }));
+  } catch {
+    elements.scanStatus.hidden = true;
+    elements.scanError.textContent = "The report could not be scanned. Check your connection and try again.";
+    elements.analyzeReportButton.disabled = false;
+    elements.analyzeReportButton.hidden = false;
+    return;
+  }
 
   if (error || !data?.fields) {
     let message = error?.message || data?.error || "The report could not be read.";
@@ -833,8 +856,10 @@ async function scanReport(event) {
         // Keep the generic function error when no JSON response is available.
       }
     }
+    elements.scanStatus.hidden = true;
     elements.scanError.textContent = message;
     elements.analyzeReportButton.disabled = false;
+    elements.analyzeReportButton.hidden = false;
     elements.analyzeReportButton.textContent = "Try again";
     return;
   }
@@ -843,6 +868,11 @@ async function scanReport(event) {
   closeScanner();
   resetScanner();
   openShiftForm(fields);
+}
+
+async function scanReport(event) {
+  event.preventDefault();
+  await scanSelectedReport();
 }
 
 async function submitShift(event) {

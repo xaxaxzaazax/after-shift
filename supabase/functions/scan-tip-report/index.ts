@@ -53,7 +53,7 @@ Deno.serve(async (req: Request) => {
   const { data: { user }, error: userError } = await userClient.auth.getUser();
   if (userError || !user) return jsonResponse({ error: "Invalid session" }, 401, headers);
 
-  let body: { image?: unknown };
+  let body: { image?: unknown; currentDate?: unknown; timeZone?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -64,6 +64,10 @@ Deno.serve(async (req: Request) => {
   const match = body.image.match(/^data:(image\/(?:jpeg|png|webp));base64,[A-Za-z0-9+/=]+$/);
   if (!match || !allowedImageTypes.has(match[1])) return jsonResponse({ error: "Use a JPEG, PNG, or WebP image" }, 400, headers);
   if (imageSize(body.image) > maxImageBytes) return jsonResponse({ error: "The image is too large" }, 413, headers);
+  const currentDate = typeof body.currentDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.currentDate)
+    ? body.currentDate
+    : new Date().toISOString().slice(0, 10);
+  const timeZone = typeof body.timeZone === "string" && body.timeZone.length <= 80 ? body.timeZone : null;
 
   const { data: allowed, error: rateLimitError } = await userClient.rpc("claim_tip_report_scan");
   if (rateLimitError) return jsonResponse({ error: "Could not verify the scan limit" }, 500, headers);
@@ -83,13 +87,13 @@ Deno.serve(async (req: Request) => {
           role: "system",
           content: [{
             type: "input_text",
-            text: "Extract shift totals from restaurant checkout, tip-out, server, bartender, or end-of-day reports. Never guess. Distinguish gross tips from take-home/net tips and distinguish tip-out paid from tips received. Use null when a field is absent or ambiguous. Dates must be YYYY-MM-DD. Amounts are non-negative numbers without currency symbols. Add a short warning for ambiguity, poor image quality, or calculations that do not reconcile.",
+            text: `Extract shift totals from restaurant checkout, tip-out, server, bartender, or end-of-day reports. The user's local calendar date is ${currentDate}${timeZone ? ` in ${timeZone}` : ""}. Extract the report's business, shift, or checkout date, not the upload date. Never replace an older printed report date with the current date. If a complete date appears, use it exactly. If only month and day appear, infer the nearest reasonable year. If only a day of the month appears, use a visible month and year when available; otherwise use the user's current month and year, rolling back one month when that day would otherwise be in the future. Example: when the current date is 2026-08-05 and the report shows day 3, return 2026-08-03. Prefer labels such as business date, shift date, or report date over print, settlement, or processing timestamps. Add a warning when the year or month was inferred. Distinguish gross tips from take-home/net tips and distinguish tip-out paid from tips received. Use null when a non-date field is absent or ambiguous. Dates must be YYYY-MM-DD. Amounts are non-negative numbers without currency symbols. Add a short warning for ambiguity, poor image quality, or calculations that do not reconcile.`,
           }],
         },
         {
           role: "user",
           content: [
-            { type: "input_text", text: "Read this report and return the shift fields." },
+            { type: "input_text", text: `Read this report and return the shift fields. Use ${currentDate} only as context for resolving partial printed dates.` },
             { type: "input_image", image_url: body.image, detail: "high" },
           ],
         },
