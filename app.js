@@ -73,6 +73,13 @@ const elements = {
   scanLoading: $("#scanLoading"),
   scanLoadingText: $("#scanLoadingText"),
   scanNotice: $("#scanNotice"),
+  onboardingDialog: $("#onboardingDialog"),
+  onboardingContent: $("#onboardingContent"),
+  onboardingBackButton: $("#onboardingBackButton"),
+  onboardingSkipButton: $("#onboardingSkipButton"),
+  onboardingContinueButton: $("#onboardingContinueButton"),
+  onboardingProgress: $("#onboardingProgress"),
+  onboardingError: $("#onboardingError"),
   goalForm: $("#goalForm"),
   weeklyGoalInput: $("#weeklyGoalInput"),
   monthlyGoalInput: $("#monthlyGoalInput"),
@@ -100,10 +107,28 @@ let lastLoadedAt = 0;
 let backgroundRefresh = null;
 let dataVersion = 0;
 let goals = { weekly: null, monthly: null };
+let profile = null;
 const legacyMigrationAttemptedFor = new Set();
 let authMode = "login";
 let selectedReportImage = null;
 let scanLoadingTimers = [];
+let onboardingStep = 0;
+let onboardingDraft = { workplace: "", role: null, tipSetup: null, goal: "" };
+
+const onboardingRoles = [
+  { value: "server", label: "Server", icon: "SRV" },
+  { value: "bartender", label: "Bartender", icon: "BAR" },
+  { value: "host", label: "Host", icon: "HST" },
+  { value: "busser", label: "Busser", icon: "BUS" },
+  { value: "food_runner", label: "Food runner", icon: "RUN" },
+  { value: "other", label: "Other", icon: "ETC" }
+];
+const onboardingTipSetups = [
+  { value: "individual", label: "I keep my own tips", description: "Individual tips after any tip-out", icon: "ME" },
+  { value: "tip_out", label: "I tip out coworkers", description: "I pay support staff from my tips", icon: "OUT" },
+  { value: "pool", label: "We share a tip pool", description: "Tips are combined across the team", icon: "POOL" },
+  { value: "varies", label: "It varies", description: "The setup changes by shift", icon: "MIX" }
+];
 
 function setAuthBusy(isBusy) {
   elements.emailLoginButton.disabled = isBusy;
@@ -325,6 +350,22 @@ async function fetchGoals() {
   };
 }
 
+async function fetchProfile() {
+  const { data, error } = await supabaseClient
+    .from("user_profiles")
+    .select("workplace_name, role, tip_setup, onboarding_completed_at")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    workplaceName: data.workplace_name || "",
+    role: data.role,
+    tipSetup: data.tip_setup,
+    onboardingCompletedAt: data.onboarding_completed_at
+  };
+}
+
 async function applySession(session) {
   const version = ++sessionVersion;
   const nextUser = session?.user ?? null;
@@ -339,11 +380,13 @@ async function applySession(session) {
     resetScanner();
     entries = [];
     goals = { weekly: null, monthly: null };
+    profile = null;
     loadedUserId = null;
     lastLoadedAt = 0;
     if (elements.shiftDialog.open) elements.shiftDialog.close();
     if (elements.goalDialog.open) elements.goalDialog.close();
     if (elements.accountDialog.open) elements.accountDialog.close();
+    if (elements.onboardingDialog.open) elements.onboardingDialog.close();
     if (elements.resetDialog.open) elements.resetDialog.close();
     render();
     showSyncStatus("");
@@ -355,21 +398,24 @@ async function applySession(session) {
   const userId = currentUser.id;
   entries = [];
   goals = { weekly: null, monthly: null };
+  profile = null;
   render();
   showSyncStatus("Loading your shifts...");
 
   try {
     await migrateLegacyEntries();
-    const [nextEntries, nextGoals] = await Promise.all([fetchEntries(), fetchGoals()]);
+    const [nextEntries, nextGoals, nextProfile] = await Promise.all([fetchEntries(), fetchGoals(), fetchProfile()]);
     if (currentUser?.id !== userId) return;
     entries = nextEntries;
     goals = nextGoals;
+    profile = nextProfile;
     loadedUserId = userId;
     lastLoadedAt = Date.now();
     render();
     elements.appView.hidden = false;
     showPage("home");
     if (version === sessionVersion && elements.syncStatus.textContent === "Loading your shifts...") showSyncStatus("");
+    if (!profile?.onboardingCompletedAt) openOnboarding();
   } catch (error) {
     if (version === sessionVersion) {
       elements.appView.hidden = false;
@@ -383,19 +429,271 @@ async function refreshInBackground() {
   if (!currentUser || backgroundRefresh || Date.now() - lastLoadedAt < 300000) return;
   const userId = currentUser.id;
   const version = dataVersion;
-  backgroundRefresh = Promise.all([fetchEntries(), fetchGoals()]);
+  backgroundRefresh = Promise.all([fetchEntries(), fetchGoals(), fetchProfile()]);
   try {
-    const [nextEntries, nextGoals] = await backgroundRefresh;
+    const [nextEntries, nextGoals, nextProfile] = await backgroundRefresh;
     if (currentUser?.id !== userId || dataVersion !== version) return;
     entries = nextEntries;
     goals = nextGoals;
+    profile = nextProfile;
     lastLoadedAt = Date.now();
     render();
+    if (!profile?.onboardingCompletedAt && !elements.onboardingDialog.open) openOnboarding();
   } catch (error) {
     if (currentUser?.id === userId) showSyncStatus(`Could not refresh your shifts: ${error.message}`);
   } finally {
     backgroundRefresh = null;
   }
+}
+
+function onboardingHeading(eyebrow, title, copy) {
+  elements.onboardingContent.innerHTML = `<p class="eyebrow">${eyebrow}</p><h1>${title}</h1><p class="onboarding-lead">${copy}</p>`;
+}
+
+function onboardingChoiceList(items, selected, onSelect) {
+  const list = document.createElement("div");
+  list.className = "onboarding-choices";
+  items.forEach((item) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `onboarding-choice${selected === item.value ? " selected" : ""}`;
+    const icon = document.createElement("span");
+    icon.className = "onboarding-choice-icon";
+    icon.textContent = item.icon;
+    const copy = document.createElement("span");
+    const title = document.createElement("strong");
+    title.textContent = item.label;
+    copy.append(title);
+    if (item.description) {
+      const description = document.createElement("small");
+      description.textContent = item.description;
+      copy.append(description);
+    }
+    const dot = document.createElement("span");
+    dot.className = "onboarding-choice-dot";
+    button.append(icon, copy, dot);
+    button.addEventListener("click", () => onSelect(item.value));
+    list.append(button);
+  });
+  return list;
+}
+
+function onboardingLabel(items, value, fallback) {
+  return items.find((item) => item.value === value)?.label || fallback;
+}
+
+function renderOnboarding() {
+  elements.onboardingContent.style.animation = "none";
+  void elements.onboardingContent.offsetWidth;
+  elements.onboardingContent.style.animation = "";
+  elements.onboardingContent.replaceChildren();
+  elements.onboardingError.textContent = "";
+  elements.onboardingBackButton.disabled = onboardingStep === 0;
+  elements.onboardingSkipButton.hidden = onboardingStep === 0 || onboardingStep === 5;
+  elements.onboardingProgress.style.width = onboardingStep === 0 ? "0%" : `${Math.min(100, (onboardingStep / 4) * 100)}%`;
+  elements.onboardingContinueButton.disabled = false;
+
+  if (onboardingStep === 0) {
+    elements.onboardingContent.innerHTML = `<div class="onboarding-mark"><strong>AS</strong><span>$</span></div><p class="eyebrow">WELCOME TO AFTER SHIFT</p><h1>Make it feel like your app.</h1><p class="onboarding-lead">Four quick questions help personalize your tip tracking. Every question can be skipped.</p>`;
+    elements.onboardingContinueButton.textContent = "Set up my account";
+    return;
+  }
+
+  if (onboardingStep === 1) {
+    onboardingHeading("1 OF 4", "What should we call your workplace?", "Use the restaurant name or a private nickname. This can help organize shifts if you work at more than one place.");
+    const label = document.createElement("label");
+    const caption = document.createElement("span");
+    caption.className = "onboarding-field-label";
+    caption.textContent = "Workplace name";
+    const input = document.createElement("input");
+    input.className = "onboarding-text-field";
+    input.maxLength = 80;
+    input.placeholder = "Downtown location";
+    input.value = onboardingDraft.workplace;
+    const hint = document.createElement("p");
+    hint.className = "onboarding-hint";
+    hint.textContent = "Optional. You never need to enter the restaurant's address.";
+    input.addEventListener("input", () => { onboardingDraft.workplace = input.value; });
+    label.append(caption, input, hint);
+    elements.onboardingContent.append(label);
+    elements.onboardingContinueButton.textContent = "Continue";
+    setTimeout(() => input.focus(), 100);
+    return;
+  }
+
+  if (onboardingStep === 2) {
+    onboardingHeading("2 OF 4", "What do you usually do?", "Your role can help After Shift understand different report layouts and show more relevant insights.");
+    elements.onboardingContent.append(onboardingChoiceList(onboardingRoles, onboardingDraft.role, (value) => {
+      onboardingDraft.role = value;
+      renderOnboarding();
+    }));
+    elements.onboardingContinueButton.textContent = "Continue";
+    elements.onboardingContinueButton.disabled = !onboardingDraft.role;
+    return;
+  }
+
+  if (onboardingStep === 3) {
+    onboardingHeading("3 OF 4", "How are tips handled?", "This helps the report scanner distinguish your tips from the amount you tip out or receive through a pool.");
+    elements.onboardingContent.append(onboardingChoiceList(onboardingTipSetups, onboardingDraft.tipSetup, (value) => {
+      onboardingDraft.tipSetup = value;
+      renderOnboarding();
+    }));
+    elements.onboardingContinueButton.textContent = "Continue";
+    elements.onboardingContinueButton.disabled = !onboardingDraft.tipSetup;
+    return;
+  }
+
+  if (onboardingStep === 4) {
+    onboardingHeading("4 OF 4", "Want a weekly take-home goal?", "Set a target now or skip it. You can change this any time from the app.");
+    const card = document.createElement("div");
+    card.className = "onboarding-goal-card";
+    const caption = document.createElement("span");
+    caption.className = "onboarding-field-label";
+    caption.textContent = "Weekly goal";
+    const inputWrap = document.createElement("div");
+    inputWrap.className = "onboarding-goal-input";
+    const currency = document.createElement("b");
+    currency.textContent = "$";
+    const input = document.createElement("input");
+    input.type = "number";
+    input.inputMode = "numeric";
+    input.min = "1";
+    input.step = "25";
+    input.placeholder = "750";
+    input.value = onboardingDraft.goal;
+    input.addEventListener("input", () => { onboardingDraft.goal = input.value; });
+    inputWrap.append(currency, input);
+    const chips = document.createElement("div");
+    chips.className = "onboarding-goal-chips";
+    [500, 750, 1000].forEach((amount) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = wholeMoney.format(amount);
+      button.addEventListener("click", () => {
+        onboardingDraft.goal = String(amount);
+        input.value = onboardingDraft.goal;
+      });
+      chips.append(button);
+    });
+    card.append(caption, inputWrap, chips);
+    elements.onboardingContent.append(card);
+    elements.onboardingContinueButton.textContent = "Finish setup";
+    return;
+  }
+
+  onboardingHeading("YOU'RE READY", "Your shifts, your way.", "After Shift will use these details to personalize your account.");
+  const summary = document.createElement("div");
+  summary.className = "onboarding-summary";
+  const rows = [
+    ["WORK", "Workplace", onboardingDraft.workplace.trim() || "Not provided"],
+    ["ROLE", "Role", onboardingLabel(onboardingRoles, onboardingDraft.role, "Not provided")],
+    ["TIPS", "Tip setup", onboardingLabel(onboardingTipSetups, onboardingDraft.tipSetup, "Not provided")],
+    ["GOAL", "Weekly goal", onboardingDraft.goal ? wholeMoney.format(Number(onboardingDraft.goal)) : "No goal yet"]
+  ];
+  rows.forEach(([iconText, labelText, valueText]) => {
+    const row = document.createElement("div");
+    row.className = "onboarding-summary-row";
+    const icon = document.createElement("span");
+    icon.textContent = iconText;
+    const copy = document.createElement("div");
+    const label = document.createElement("small");
+    label.textContent = labelText;
+    const value = document.createElement("strong");
+    value.textContent = valueText;
+    copy.append(label, value);
+    row.append(icon, copy);
+    summary.append(row);
+  });
+  elements.onboardingContent.append(summary);
+  elements.onboardingContinueButton.textContent = "Open After Shift";
+}
+
+function openOnboarding() {
+  onboardingStep = 0;
+  onboardingDraft = {
+    workplace: profile?.workplaceName || "",
+    role: profile?.role || null,
+    tipSetup: profile?.tipSetup || null,
+    goal: goals.weekly == null ? "" : String(goals.weekly)
+  };
+  renderOnboarding();
+  if (!elements.onboardingDialog.open) elements.onboardingDialog.showModal();
+}
+
+function skipOnboardingStep() {
+  if (onboardingStep === 1) onboardingDraft.workplace = "";
+  if (onboardingStep === 2) onboardingDraft.role = null;
+  if (onboardingStep === 3) onboardingDraft.tipSetup = null;
+  if (onboardingStep === 4) onboardingDraft.goal = goals.weekly == null ? "" : String(goals.weekly);
+  onboardingStep = Math.min(5, onboardingStep + 1);
+  renderOnboarding();
+}
+
+async function saveOnboarding() {
+  const workplace = onboardingDraft.workplace.trim();
+  const weekly = onboardingDraft.goal === "" ? null : Number(onboardingDraft.goal);
+  if (workplace.length > 80) {
+    elements.onboardingError.textContent = "Keep the workplace name under 80 characters.";
+    return;
+  }
+  if (weekly !== null && (!Number.isFinite(weekly) || weekly <= 0 || weekly > 9999999999.99)) {
+    elements.onboardingError.textContent = "Enter a valid weekly goal or leave it blank.";
+    return;
+  }
+
+  elements.onboardingContinueButton.disabled = true;
+  elements.onboardingContinueButton.textContent = "Saving...";
+  elements.onboardingError.textContent = "";
+
+  const roundedWeekly = weekly === null ? null : Math.round(weekly * 100) / 100;
+  const { error: goalError } = await supabaseClient.from("user_goals").upsert({
+    user_id: currentUser.id,
+    weekly_take_home: roundedWeekly,
+    monthly_take_home: goals.monthly,
+    updated_at: new Date().toISOString()
+  });
+  if (goalError) {
+    elements.onboardingError.textContent = goalError.message;
+    elements.onboardingContinueButton.disabled = false;
+    elements.onboardingContinueButton.textContent = "Open After Shift";
+    return;
+  }
+
+  const completedAt = new Date().toISOString();
+  const { error: profileError } = await supabaseClient.from("user_profiles").upsert({
+    user_id: currentUser.id,
+    workplace_name: workplace || null,
+    role: onboardingDraft.role,
+    tip_setup: onboardingDraft.tipSetup,
+    onboarding_completed_at: completedAt,
+    updated_at: completedAt
+  });
+  if (profileError) {
+    elements.onboardingError.textContent = profileError.message;
+    elements.onboardingContinueButton.disabled = false;
+    elements.onboardingContinueButton.textContent = "Open After Shift";
+    return;
+  }
+
+  goals.weekly = roundedWeekly;
+  profile = {
+    workplaceName: workplace,
+    role: onboardingDraft.role,
+    tipSetup: onboardingDraft.tipSetup,
+    onboardingCompletedAt: completedAt
+  };
+  dataVersion += 1;
+  render();
+  elements.onboardingDialog.close();
+}
+
+async function advanceOnboarding() {
+  if (onboardingStep < 5) {
+    onboardingStep += 1;
+    renderOnboarding();
+    return;
+  }
+  await saveOnboarding();
 }
 
 function parseDate(dateString) {
@@ -1033,6 +1331,13 @@ function showPage(page) {
 
 elements.homeTabButton.addEventListener("click", () => showPage("home"));
 elements.earningsTabButton.addEventListener("click", () => showPage("earnings"));
+elements.onboardingBackButton.addEventListener("click", () => {
+  onboardingStep = Math.max(0, onboardingStep - 1);
+  renderOnboarding();
+});
+elements.onboardingSkipButton.addEventListener("click", skipOnboardingStep);
+elements.onboardingContinueButton.addEventListener("click", advanceOnboarding);
+elements.onboardingDialog.addEventListener("cancel", (event) => event.preventDefault());
 elements.emailAuthForm.addEventListener("submit", submitAuth);
 elements.authModeButton.addEventListener("click", () => setAuthMode(authMode === "login" ? "signup" : "login"));
 elements.forgotPasswordButton.addEventListener("click", sendPasswordReset);

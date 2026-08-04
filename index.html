@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-180.png" />
-    <link rel="stylesheet" href="styles.css?v=18" />
+    <link rel="stylesheet" href="styles.css?v=19" />
     <title>After Shift</title>
   </head>
   <body>
@@ -203,6 +203,21 @@
       </div>
     </div>
 
+    <dialog id="onboardingDialog" class="onboarding-dialog">
+      <div class="onboarding-screen">
+        <header class="onboarding-topline">
+          <button class="onboarding-back" id="onboardingBackButton" type="button" aria-label="Previous question">‹</button>
+          <div class="onboarding-progress" aria-hidden="true"><span id="onboardingProgress"></span></div>
+          <button class="onboarding-skip" id="onboardingSkipButton" type="button">Skip</button>
+        </header>
+        <div class="onboarding-content" id="onboardingContent"></div>
+        <footer class="onboarding-footer">
+          <p class="form-error" id="onboardingError" role="alert"></p>
+          <button class="onboarding-continue" id="onboardingContinueButton" type="button">Get started</button>
+        </footer>
+      </div>
+    </dialog>
+
     <dialog id="shiftDialog" class="sheet">
       <form id="shiftForm" method="dialog">
         <div class="sheet-handle" aria-hidden="true"></div>
@@ -303,6 +318,6 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0/dist/umd/supabase.min.js" integrity="sha384-fPWur1rx/DE6YtXP/x0MD6dd90RgnVsz5yX/DIg7CcVAnTBZsENWuIcpvVTM39ti" crossorigin="anonymous" defer></script>
-    <script src="app.js?v=18" defer></script>
+    <script src="app.js?v=19" defer></script>
   </body>
 </html>
