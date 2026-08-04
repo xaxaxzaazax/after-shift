@@ -34,6 +34,7 @@ const elements = {
   weekTipRate: $("#weekTipRate"),
   weekTipOutRate: $("#weekTipOutRate"),
   weekHours: $("#weekHours"),
+  weekBasePay: $("#weekBasePay"),
   weekHourly: $("#weekHourly"),
   shiftCount: $("#shiftCount"),
   weekProgress: $("#weekProgress"),
@@ -81,6 +82,7 @@ const elements = {
   onboardingProgress: $("#onboardingProgress"),
   onboardingError: $("#onboardingError"),
   goalForm: $("#goalForm"),
+  hourlyPayInput: $("#hourlyPayInput"),
   weeklyGoalInput: $("#weeklyGoalInput"),
   monthlyGoalInput: $("#monthlyGoalInput"),
   goalError: $("#goalError"),
@@ -113,7 +115,7 @@ let authMode = "login";
 let selectedReportImage = null;
 let scanLoadingTimers = [];
 let onboardingStep = 0;
-let onboardingDraft = { workplace: "", role: null, tipSetup: null, goal: "" };
+let onboardingDraft = { workplace: "", role: null, tipSetup: null, hourlyRate: "", goal: "" };
 
 const onboardingRoles = [
   { value: "server", label: "Server", icon: "SRV" },
@@ -144,7 +146,7 @@ function setAuthMode(mode) {
   const isLogin = mode === "login";
   elements.authCopy.textContent = isLogin
     ? "Welcome back. Log in to see your shifts, goals, and earnings."
-    : "Create a free account to start tracking your tips, hours, and take-home pay.";
+    : "Create a free account to start tracking your tips, hours, and total earnings.";
   elements.emailLoginButton.textContent = isLogin ? "Log in" : "Create account";
   elements.authModeButton.innerHTML = isLogin
     ? "New here? <b>Create an account</b>"
@@ -250,6 +252,7 @@ function normalizeEntry(row) {
     tips: Number(row.tips),
     tipOut: row.tip_out == null ? 0 : Number(row.tip_out),
     hours: row.hours_worked == null ? null : Number(row.hours_worked),
+    hourlyPayRate: row.base_hourly_rate == null ? null : Number(row.base_hourly_rate),
     notes: row.notes || "",
     createdAt: new Date(row.created_at).getTime()
   };
@@ -329,7 +332,7 @@ async function migrateLegacyEntries() {
 async function fetchEntries() {
   const { data, error } = await supabaseClient
     .from("shifts")
-    .select("id, shift_date, sales, tips, tip_out, hours_worked, notes, created_at")
+    .select("id, shift_date, sales, tips, tip_out, hours_worked, base_hourly_rate, notes, created_at")
     .order("shift_date", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -353,7 +356,7 @@ async function fetchGoals() {
 async function fetchProfile() {
   const { data, error } = await supabaseClient
     .from("user_profiles")
-    .select("workplace_name, role, tip_setup, onboarding_completed_at")
+    .select("workplace_name, role, tip_setup, hourly_pay_rate, onboarding_completed_at, onboarding_version")
     .maybeSingle();
 
   if (error) throw error;
@@ -362,7 +365,9 @@ async function fetchProfile() {
     workplaceName: data.workplace_name || "",
     role: data.role,
     tipSetup: data.tip_setup,
-    onboardingCompletedAt: data.onboarding_completed_at
+    hourlyPayRate: data.hourly_pay_rate == null ? null : Number(data.hourly_pay_rate),
+    onboardingCompletedAt: data.onboarding_completed_at,
+    onboardingVersion: Number(data.onboarding_version || 1)
   };
 }
 
@@ -415,7 +420,7 @@ async function applySession(session) {
     elements.appView.hidden = false;
     showPage("home");
     if (version === sessionVersion && elements.syncStatus.textContent === "Loading your shifts...") showSyncStatus("");
-    if (!profile?.onboardingCompletedAt) openOnboarding();
+    if (!profile?.onboardingCompletedAt || profile.onboardingVersion < 2) openOnboarding();
   } catch (error) {
     if (version === sessionVersion) {
       elements.appView.hidden = false;
@@ -438,7 +443,7 @@ async function refreshInBackground() {
     profile = nextProfile;
     lastLoadedAt = Date.now();
     render();
-    if (!profile?.onboardingCompletedAt && !elements.onboardingDialog.open) openOnboarding();
+    if ((!profile?.onboardingCompletedAt || profile.onboardingVersion < 2) && !elements.onboardingDialog.open) openOnboarding();
   } catch (error) {
     if (currentUser?.id === userId) showSyncStatus(`Could not refresh your shifts: ${error.message}`);
   } finally {
@@ -489,18 +494,18 @@ function renderOnboarding() {
   elements.onboardingContent.replaceChildren();
   elements.onboardingError.textContent = "";
   elements.onboardingBackButton.disabled = onboardingStep === 0;
-  elements.onboardingSkipButton.hidden = onboardingStep === 0 || onboardingStep === 5;
-  elements.onboardingProgress.style.width = onboardingStep === 0 ? "0%" : `${Math.min(100, (onboardingStep / 4) * 100)}%`;
+  elements.onboardingSkipButton.hidden = onboardingStep === 0 || onboardingStep === 6;
+  elements.onboardingProgress.style.width = onboardingStep === 0 ? "0%" : `${Math.min(100, (onboardingStep / 5) * 100)}%`;
   elements.onboardingContinueButton.disabled = false;
 
   if (onboardingStep === 0) {
-    elements.onboardingContent.innerHTML = `<div class="onboarding-mark"><strong>AS</strong><span>$</span></div><p class="eyebrow">WELCOME TO AFTER SHIFT</p><h1>Make it feel like your app.</h1><p class="onboarding-lead">Four quick questions help personalize your tip tracking. Every question can be skipped.</p>`;
+    elements.onboardingContent.innerHTML = `<div class="onboarding-mark"><strong>AS</strong><span>$</span></div><p class="eyebrow">WELCOME TO AFTER SHIFT</p><h1>Make it feel like your app.</h1><p class="onboarding-lead">Five quick questions help personalize your earnings. Every question can be skipped.</p>`;
     elements.onboardingContinueButton.textContent = "Set up my account";
     return;
   }
 
   if (onboardingStep === 1) {
-    onboardingHeading("1 OF 4", "What should we call your workplace?", "Use the restaurant name or a private nickname. This can help organize shifts if you work at more than one place.");
+    onboardingHeading("1 OF 5", "What should we call your workplace?", "Use the restaurant name or a private nickname. This can help organize shifts if you work at more than one place.");
     const label = document.createElement("label");
     const caption = document.createElement("span");
     caption.className = "onboarding-field-label";
@@ -522,7 +527,7 @@ function renderOnboarding() {
   }
 
   if (onboardingStep === 2) {
-    onboardingHeading("2 OF 4", "What do you usually do?", "Your role can help After Shift understand different report layouts and show more relevant insights.");
+    onboardingHeading("2 OF 5", "What do you usually do?", "Your role can help After Shift understand different report layouts and show more relevant insights.");
     elements.onboardingContent.append(onboardingChoiceList(onboardingRoles, onboardingDraft.role, (value) => {
       onboardingDraft.role = value;
       renderOnboarding();
@@ -533,7 +538,7 @@ function renderOnboarding() {
   }
 
   if (onboardingStep === 3) {
-    onboardingHeading("3 OF 4", "How are tips handled?", "This helps the report scanner distinguish your tips from the amount you tip out or receive through a pool.");
+    onboardingHeading("3 OF 5", "How are tips handled?", "This helps the report scanner distinguish your tips from the amount you tip out or receive through a pool.");
     elements.onboardingContent.append(onboardingChoiceList(onboardingTipSetups, onboardingDraft.tipSetup, (value) => {
       onboardingDraft.tipSetup = value;
       renderOnboarding();
@@ -544,7 +549,37 @@ function renderOnboarding() {
   }
 
   if (onboardingStep === 4) {
-    onboardingHeading("4 OF 4", "Want a weekly take-home goal?", "Set a target now or skip it. You can change this any time from the app.");
+    onboardingHeading("4 OF 5", "What is your hourly base pay?", "Enter the hourly wage you earn before tips. We will combine it with your net tips when calculating earnings.");
+    const card = document.createElement("div");
+    card.className = "onboarding-goal-card";
+    const caption = document.createElement("span");
+    caption.className = "onboarding-field-label";
+    caption.textContent = "Hourly base pay";
+    const inputWrap = document.createElement("div");
+    inputWrap.className = "onboarding-goal-input";
+    const currency = document.createElement("b");
+    currency.textContent = "$";
+    const input = document.createElement("input");
+    input.type = "number";
+    input.inputMode = "decimal";
+    input.min = "0";
+    input.max = "10000";
+    input.step = "0.01";
+    input.placeholder = "2.13";
+    input.value = onboardingDraft.hourlyRate;
+    input.addEventListener("input", () => { onboardingDraft.hourlyRate = input.value; });
+    inputWrap.append(currency, input);
+    const hint = document.createElement("p");
+    hint.className = "onboarding-hint";
+    hint.textContent = "For example, $2.13 per hour for a tipped server.";
+    card.append(caption, inputWrap, hint);
+    elements.onboardingContent.append(card);
+    elements.onboardingContinueButton.textContent = "Continue";
+    return;
+  }
+
+  if (onboardingStep === 5) {
+    onboardingHeading("5 OF 5", "Want a weekly earnings goal?", "Set a target now or skip it. You can change this any time from the app.");
     const card = document.createElement("div");
     card.className = "onboarding-goal-card";
     const caption = document.createElement("span");
@@ -588,6 +623,7 @@ function renderOnboarding() {
     ["WORK", "Workplace", onboardingDraft.workplace.trim() || "Not provided"],
     ["ROLE", "Role", onboardingLabel(onboardingRoles, onboardingDraft.role, "Not provided")],
     ["TIPS", "Tip setup", onboardingLabel(onboardingTipSetups, onboardingDraft.tipSetup, "Not provided")],
+    ["PAY", "Hourly base pay", onboardingDraft.hourlyRate === "" ? "Not provided" : `${money.format(Number(onboardingDraft.hourlyRate))}/hr`],
     ["GOAL", "Weekly goal", onboardingDraft.goal ? wholeMoney.format(Number(onboardingDraft.goal)) : "No goal yet"]
   ];
   rows.forEach(([iconText, labelText, valueText]) => {
@@ -614,6 +650,7 @@ function openOnboarding() {
     workplace: profile?.workplaceName || "",
     role: profile?.role || null,
     tipSetup: profile?.tipSetup || null,
+    hourlyRate: profile?.hourlyPayRate == null ? "" : String(profile.hourlyPayRate),
     goal: goals.weekly == null ? "" : String(goals.weekly)
   };
   renderOnboarding();
@@ -624,20 +661,26 @@ function skipOnboardingStep() {
   if (onboardingStep === 1) onboardingDraft.workplace = "";
   if (onboardingStep === 2) onboardingDraft.role = null;
   if (onboardingStep === 3) onboardingDraft.tipSetup = null;
-  if (onboardingStep === 4) onboardingDraft.goal = goals.weekly == null ? "" : String(goals.weekly);
-  onboardingStep = Math.min(5, onboardingStep + 1);
+  if (onboardingStep === 4) onboardingDraft.hourlyRate = profile?.hourlyPayRate == null ? "" : String(profile.hourlyPayRate);
+  if (onboardingStep === 5) onboardingDraft.goal = goals.weekly == null ? "" : String(goals.weekly);
+  onboardingStep = Math.min(6, onboardingStep + 1);
   renderOnboarding();
 }
 
 async function saveOnboarding() {
   const workplace = onboardingDraft.workplace.trim();
   const weekly = onboardingDraft.goal === "" ? null : Number(onboardingDraft.goal);
+  const hourlyRate = onboardingDraft.hourlyRate === "" ? null : Number(onboardingDraft.hourlyRate);
   if (workplace.length > 80) {
     elements.onboardingError.textContent = "Keep the workplace name under 80 characters.";
     return;
   }
   if (weekly !== null && (!Number.isFinite(weekly) || weekly <= 0 || weekly > 9999999999.99)) {
     elements.onboardingError.textContent = "Enter a valid weekly goal or leave it blank.";
+    return;
+  }
+  if (hourlyRate !== null && (!Number.isFinite(hourlyRate) || hourlyRate < 0 || hourlyRate > 10000)) {
+    elements.onboardingError.textContent = "Enter a valid hourly pay rate or leave it blank.";
     return;
   }
 
@@ -660,12 +703,28 @@ async function saveOnboarding() {
   }
 
   const completedAt = new Date().toISOString();
+  const roundedHourlyRate = hourlyRate === null ? null : Math.round(hourlyRate * 100) / 100;
+  if (roundedHourlyRate !== null) {
+    const { error: backfillError } = await supabaseClient
+      .from("shifts")
+      .update({ base_hourly_rate: roundedHourlyRate })
+      .is("base_hourly_rate", null);
+    if (backfillError) {
+      elements.onboardingError.textContent = backfillError.message;
+      elements.onboardingContinueButton.disabled = false;
+      elements.onboardingContinueButton.textContent = "Open After Shift";
+      return;
+    }
+  }
+
   const { error: profileError } = await supabaseClient.from("user_profiles").upsert({
     user_id: currentUser.id,
     workplace_name: workplace || null,
     role: onboardingDraft.role,
     tip_setup: onboardingDraft.tipSetup,
+    hourly_pay_rate: roundedHourlyRate,
     onboarding_completed_at: completedAt,
+    onboarding_version: 2,
     updated_at: completedAt
   });
   if (profileError) {
@@ -676,11 +735,18 @@ async function saveOnboarding() {
   }
 
   goals.weekly = roundedWeekly;
+  if (roundedHourlyRate !== null) {
+    entries.forEach((entry) => {
+      if (entry.hourlyPayRate === null) entry.hourlyPayRate = roundedHourlyRate;
+    });
+  }
   profile = {
     workplaceName: workplace,
     role: onboardingDraft.role,
     tipSetup: onboardingDraft.tipSetup,
-    onboardingCompletedAt: completedAt
+    hourlyPayRate: roundedHourlyRate,
+    onboardingCompletedAt: completedAt,
+    onboardingVersion: 2
   };
   dataVersion += 1;
   render();
@@ -688,7 +754,21 @@ async function saveOnboarding() {
 }
 
 async function advanceOnboarding() {
-  if (onboardingStep < 5) {
+  if (onboardingStep === 4 && onboardingDraft.hourlyRate !== "") {
+    const hourlyRate = Number(onboardingDraft.hourlyRate);
+    if (!Number.isFinite(hourlyRate) || hourlyRate < 0 || hourlyRate > 10000) {
+      elements.onboardingError.textContent = "Enter a valid hourly pay rate or leave it blank.";
+      return;
+    }
+  }
+  if (onboardingStep === 5 && onboardingDraft.goal !== "") {
+    const weekly = Number(onboardingDraft.goal);
+    if (!Number.isFinite(weekly) || weekly <= 0 || weekly > 9999999999.99) {
+      elements.onboardingError.textContent = "Enter a valid weekly goal or leave it blank.";
+      return;
+    }
+  }
+  if (onboardingStep < 6) {
     onboardingStep += 1;
     renderOnboarding();
     return;
@@ -744,18 +824,30 @@ function formatRate(rate) {
   return `${rate.toFixed(1)}%`;
 }
 
-function takeHome(list) {
-  return sum(list, "tips") - sum(list, "tipOut");
+function basePay(entry) {
+  return (entry.hours || 0) * (entry.hourlyPayRate || 0);
+}
+
+function entryEarnings(entry) {
+  return entry.tips - entry.tipOut + basePay(entry);
+}
+
+function totalEarnings(list) {
+  return list.reduce((total, entry) => total + entryEarnings(entry), 0);
 }
 
 function totalHours(list) {
   return list.reduce((total, entry) => total + (entry.hours || 0), 0);
 }
 
+function totalBasePay(list) {
+  return list.reduce((total, entry) => total + basePay(entry), 0);
+}
+
 function hourlyEarnings(list) {
   const timedEntries = list.filter((entry) => entry.hours > 0);
   const hours = totalHours(timedEntries);
-  return hours > 0 ? takeHome(timedEntries) / hours : 0;
+  return hours > 0 ? totalEarnings(timedEntries) / hours : 0;
 }
 
 function entriesBetween(start, end) {
@@ -779,7 +871,7 @@ function createChartBuckets(date) {
   if (summaryPeriod === "year") {
     return Array.from({ length: 12 }, (_, month) => {
       const { start, end } = getMonthBounds(new Date(date.getFullYear(), month, 1));
-      return { label: start.toLocaleDateString("en-US", { month: "short" }), value: takeHome(entriesBetween(start, end)) };
+      return { label: start.toLocaleDateString("en-US", { month: "short" }), value: totalEarnings(entriesBetween(start, end)) };
     });
   }
 
@@ -790,7 +882,7 @@ function createChartBuckets(date) {
     const week = getWeekBounds(cursor);
     const start = new Date(Math.max(week.start.getTime(), monthBounds.start.getTime()));
     const end = new Date(Math.min(week.end.getTime(), monthBounds.end.getTime()));
-    buckets.push({ label: `${start.getDate()}-${end.getDate()}`, value: takeHome(entriesBetween(start, end)) });
+    buckets.push({ label: `${start.getDate()}-${end.getDate()}`, value: totalEarnings(entriesBetween(start, end)) });
     cursor = new Date(end);
     cursor.setDate(cursor.getDate() + 1);
   }
@@ -826,7 +918,7 @@ function renderSummary() {
   const date = selectedSummaryDate();
   const bounds = summaryPeriod === "month" ? getMonthBounds(date) : getYearBounds(date);
   const list = entriesBetween(bounds.start, bounds.end);
-  const earnings = takeHome(list);
+  const earnings = totalEarnings(list);
   const hours = totalHours(list);
   const goal = summaryPeriod === "month" ? goals.monthly : null;
 
@@ -872,23 +964,24 @@ function render() {
   const salesTipOut = sum(withSales, "tipOut");
   const tips = sum(thisWeek, "tips");
   const tipOut = sum(thisWeek, "tipOut");
-  const takeHome = tips - tipOut;
+  const earnings = totalEarnings(thisWeek);
   const hours = totalHours(thisWeek);
 
   elements.todayLabel.textContent = now.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }).toUpperCase();
   elements.weekHeading.textContent = selectedWeekOffset === 0 ? "This week" : selectedWeekOffset === 1 ? "Last week" : `${selectedWeekOffset} weeks ago`;
   elements.nextWeekButton.disabled = selectedWeekOffset === 0;
   elements.weekRange.textContent = `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
-  elements.weekTakeHome.textContent = money.format(takeHome);
+  elements.weekTakeHome.textContent = money.format(earnings);
   elements.weekSales.textContent = withSales.length ? wholeMoney.format(sales) : "—";
   elements.weekTips.textContent = wholeMoney.format(tips);
   elements.weekTipOut.textContent = tipOut > 0 ? wholeMoney.format(tipOut) : "—";
   elements.weekTipRate.textContent = withSales.length ? formatRate(tipRate(salesTips, sales)) : "—";
   elements.weekTipOutRate.textContent = withSales.length ? formatRate(tipRate(salesTipOut, sales)) : "—";
   elements.weekHours.textContent = hours > 0 ? `${hours.toFixed(hours % 1 ? 1 : 0)} hrs` : "—";
+  elements.weekBasePay.textContent = totalBasePay(thisWeek) > 0 ? money.format(totalBasePay(thisWeek)) : "—";
   elements.weekHourly.textContent = hourlyEarnings(thisWeek) > 0 ? money.format(hourlyEarnings(thisWeek)) : "—";
   elements.shiftCount.textContent = `${thisWeek.length} ${thisWeek.length === 1 ? "shift" : "shifts"}`;
-  const weeklyProgress = goals.weekly ? Math.min(100, (takeHome / goals.weekly) * 100) : (selectedWeekOffset === 0 ? Math.min(100, ((now.getDay() || 7) / 7) * 100) : 100);
+  const weeklyProgress = goals.weekly ? Math.min(100, (earnings / goals.weekly) * 100) : (selectedWeekOffset === 0 ? Math.min(100, ((now.getDay() || 7) / 7) * 100) : 100);
   elements.weekProgress.style.width = `${weeklyProgress}%`;
   elements.goalButton.textContent = goals.weekly ? `${Math.round(weeklyProgress)}% of ${wholeMoney.format(goals.weekly)} goal` : "Set goals";
 
@@ -922,9 +1015,9 @@ function createWeekGroup(group, currentWeekStart) {
   const total = document.createElement("div");
   total.className = "week-group-total";
   const caption = document.createElement("span");
-  caption.textContent = "WALKED WITH";
+  caption.textContent = "EST. EARNINGS";
   const amount = document.createElement("strong");
-  amount.textContent = money.format(sum(group.entries, "tips") - sum(group.entries, "tipOut"));
+  amount.textContent = money.format(totalEarnings(group.entries));
   total.append(caption, amount);
   heading.append(label, total);
   wrapper.append(heading, ...group.entries.map(createShiftRow));
@@ -958,7 +1051,11 @@ function createShiftRow(entry) {
     parts.push(`${money.format(entry.tips)} tips`);
     if (entry.tipOut > 0) parts.push(`${money.format(entry.tipOut)} tip out`);
   }
-  if (entry.hours) parts.push(`${entry.hours.toFixed(entry.hours % 1 ? 1 : 0)} hrs - ${money.format((entry.tips - entry.tipOut) / entry.hours)}/hr`);
+  if (entry.hours) {
+    parts.push(`${entry.hours.toFixed(entry.hours % 1 ? 1 : 0)} hrs`);
+    if (entry.hourlyPayRate !== null) parts.push(`${money.format(basePay(entry))} base pay`);
+    parts.push(`${money.format(entryEarnings(entry) / entry.hours)}/hr earned`);
+  }
   breakdown.textContent = parts.join(" - ");
   details.append(title, breakdown);
   if (entry.notes) {
@@ -971,7 +1068,7 @@ function createShiftRow(entry) {
   const result = document.createElement("div");
   result.className = "shift-result";
   const amount = document.createElement("strong");
-  amount.textContent = money.format(entry.tips - entry.tipOut);
+  amount.textContent = money.format(entryEarnings(entry));
   const remove = document.createElement("button");
   remove.className = "delete-button";
   remove.type = "button";
@@ -993,7 +1090,9 @@ function parseAmount(value) {
 function updatePreview() {
   const tips = parseAmount(elements.tipsInput.value) || 0;
   const tipOut = parseAmount(elements.tipOutInput.value) || 0;
-  elements.takeHomePreview.textContent = money.format(tips - tipOut);
+  const hours = Number(elements.hoursInput.value) || 0;
+  const hourlyRate = profile?.hourlyPayRate || 0;
+  elements.takeHomePreview.textContent = money.format(tips - tipOut + (hours * hourlyRate));
 }
 
 function openShiftForm(scannedFields = null) {
@@ -1197,9 +1296,10 @@ async function submitShift(event) {
       tips: Math.round(tips * 100) / 100,
       tip_out: tipOut > 0 ? Math.round(tipOut * 100) / 100 : null,
       hours_worked: hours === null ? null : Math.round(hours * 100) / 100,
+      base_hourly_rate: profile?.hourlyPayRate ?? null,
       notes: notes || null
     })
-    .select("id, shift_date, sales, tips, tip_out, hours_worked, notes, created_at")
+    .select("id, shift_date, sales, tips, tip_out, hours_worked, base_hourly_rate, notes, created_at")
     .single();
   saveButton.disabled = false;
 
@@ -1229,6 +1329,7 @@ async function deleteEntry(id) {
 }
 
 function openGoalDialog() {
+  elements.hourlyPayInput.value = profile?.hourlyPayRate ?? "";
   elements.weeklyGoalInput.value = goals.weekly || "";
   elements.monthlyGoalInput.value = goals.monthly || "";
   elements.goalError.textContent = "";
@@ -1237,28 +1338,52 @@ function openGoalDialog() {
 
 async function saveGoals(event) {
   event.preventDefault();
+  const hourlyRate = elements.hourlyPayInput.value === "" ? null : Number(elements.hourlyPayInput.value);
   const weekly = elements.weeklyGoalInput.value === "" ? null : Number(elements.weeklyGoalInput.value);
   const monthly = elements.monthlyGoalInput.value === "" ? null : Number(elements.monthlyGoalInput.value);
   if ([weekly, monthly].some((value) => value !== null && (!Number.isFinite(value) || value <= 0))) {
     elements.goalError.textContent = "Goals must be positive amounts or left blank.";
     return;
   }
+  if (hourlyRate !== null && (!Number.isFinite(hourlyRate) || hourlyRate < 0 || hourlyRate > 10000)) {
+    elements.goalError.textContent = "Hourly pay must be between $0 and $10,000, or left blank.";
+    return;
+  }
 
   const saveButton = elements.goalForm.querySelector(".save-button");
   saveButton.disabled = true;
-  const { error } = await supabaseClient.from("user_goals").upsert({
-    user_id: currentUser.id,
-    weekly_take_home: weekly,
-    monthly_take_home: monthly,
-    updated_at: new Date().toISOString()
-  });
+  const updatedAt = new Date().toISOString();
+  const roundedHourlyRate = hourlyRate === null ? null : Math.round(hourlyRate * 100) / 100;
+  const shouldBackfillRate = profile.hourlyPayRate == null && roundedHourlyRate !== null;
+  const backfillRequest = shouldBackfillRate
+    ? supabaseClient.from("shifts").update({ base_hourly_rate: roundedHourlyRate }).is("base_hourly_rate", null)
+    : Promise.resolve({ error: null });
+  const [{ error }, { error: profileError }, { error: backfillError }] = await Promise.all([
+    supabaseClient.from("user_goals").upsert({
+      user_id: currentUser.id,
+      weekly_take_home: weekly,
+      monthly_take_home: monthly,
+      updated_at: updatedAt
+    }),
+    supabaseClient.from("user_profiles").update({
+      hourly_pay_rate: roundedHourlyRate,
+      updated_at: updatedAt
+    }).eq("user_id", currentUser.id),
+    backfillRequest
+  ]);
   saveButton.disabled = false;
-  if (error) {
-    elements.goalError.textContent = error.message;
+  if (error || profileError || backfillError) {
+    elements.goalError.textContent = error?.message || profileError?.message || backfillError.message;
     return;
   }
 
   goals = { weekly, monthly };
+  if (shouldBackfillRate) {
+    entries.forEach((entry) => {
+      if (entry.hourlyPayRate === null) entry.hourlyPayRate = roundedHourlyRate;
+    });
+  }
+  profile.hourlyPayRate = roundedHourlyRate;
   dataVersion += 1;
   render();
   elements.goalDialog.close();
@@ -1386,6 +1511,7 @@ $("#closeButton").addEventListener("click", () => elements.shiftDialog.close());
 elements.shiftForm.addEventListener("submit", submitShift);
 elements.tipsInput.addEventListener("input", updatePreview);
 elements.tipOutInput.addEventListener("input", updatePreview);
+elements.hoursInput.addEventListener("input", updatePreview);
 elements.shiftDialog.addEventListener("click", closeOnBackdrop);
 elements.goalDialog.addEventListener("click", closeOnBackdrop);
 elements.accountDialog.addEventListener("click", closeOnBackdrop);

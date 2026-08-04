@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-180.png" />
-    <link rel="stylesheet" href="styles.css?v=19" />
+    <link rel="stylesheet" href="styles.css?v=20" />
     <title>After Shift</title>
   </head>
   <body>
@@ -73,7 +73,7 @@
           <span id="shiftCount">0 shifts</span>
         </div>
         <p class="hero-amount" id="weekTakeHome">$0.00</p>
-        <p class="hero-caption">walking home with</p>
+        <p class="hero-caption">estimated earnings</p>
         <div class="progress-track" aria-hidden="true"><span id="weekProgress"></span></div>
         <div class="hero-footer">
           <p class="week-range" id="weekRange"></p>
@@ -107,12 +107,15 @@
         </article>
         <article class="metric-card">
           <span class="metric-icon hours-icon">H</span>
-          <p>Hours worked</p>
-          <strong id="weekHours">0 hrs</strong>
+          <p>Hours &amp; base pay</p>
+          <div class="rate-pair">
+            <span><strong id="weekHours">0 hrs</strong> worked</span>
+            <span><strong id="weekBasePay">$0</strong> base</span>
+          </div>
         </article>
         <article class="metric-card">
           <span class="metric-icon hourly-icon">$</span>
-          <p>Tips per hour</p>
+          <p>Earnings per hour</p>
           <strong id="weekHourly">$0.00</strong>
         </article>
       </section>
@@ -153,7 +156,7 @@
             <button id="nextSummaryButton" type="button" aria-label="Next summary period">›</button>
           </div>
           <p class="summary-amount" id="summaryTakeHome">$0.00</p>
-          <p class="summary-caption">take-home earnings</p>
+          <p class="summary-caption">estimated earnings</p>
           <div class="summary-goal" id="summaryGoalWrap" hidden>
             <div><span id="summaryGoalLabel"></span><strong id="summaryGoalValue"></strong></div>
             <div class="summary-goal-track"><span id="summaryGoalProgress"></span></div>
@@ -261,7 +264,7 @@
         </label>
 
         <div class="take-home-preview">
-          <span>You're walking with</span>
+          <span>Estimated earnings</span>
           <strong id="takeHomePreview">$0.00</strong>
         </div>
         <p id="formError" class="form-error" role="alert"></p>
@@ -274,13 +277,17 @@
         <button class="close-button" id="closeGoalButton" type="button" aria-label="Close">×</button>
         <p class="eyebrow">PERSONAL GOALS</p>
         <h2>What are you working toward?</h2>
-        <p>Set optional take-home targets. Your progress updates automatically as shifts are added.</p>
+        <p>Set your hourly base pay and optional earnings targets. New shifts remember the rate used when they were saved.</p>
         <label class="settings-field">
-          <span>Weekly take-home goal</span>
+          <span>Hourly base pay</span>
+          <div><b>$</b><input id="hourlyPayInput" type="number" inputmode="decimal" min="0" max="10000" step="0.01" placeholder="2.13" /></div>
+        </label>
+        <label class="settings-field">
+          <span>Weekly earnings goal</span>
           <div><b>$</b><input id="weeklyGoalInput" type="number" inputmode="decimal" min="1" step="1" placeholder="750" /></div>
         </label>
         <label class="settings-field">
-          <span>Monthly take-home goal</span>
+          <span>Monthly earnings goal</span>
           <div><b>$</b><input id="monthlyGoalInput" type="number" inputmode="decimal" min="1" step="1" placeholder="3000" /></div>
         </label>
         <p id="goalError" class="form-error" role="alert"></p>
@@ -318,6 +325,6 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0/dist/umd/supabase.min.js" integrity="sha384-fPWur1rx/DE6YtXP/x0MD6dd90RgnVsz5yX/DIg7CcVAnTBZsENWuIcpvVTM39ti" crossorigin="anonymous" defer></script>
-    <script src="app.js?v=19" defer></script>
+    <script src="app.js?v=20" defer></script>
   </body>
 </html>
