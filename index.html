@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-180.png" />
-    <link rel="stylesheet" href="styles.css?v=20" />
+    <link rel="stylesheet" href="styles.css?v=21" />
     <title>After Shift</title>
   </head>
   <body>
@@ -73,7 +73,7 @@
           <span id="shiftCount">0 shifts</span>
         </div>
         <p class="hero-amount" id="weekTakeHome">$0.00</p>
-        <p class="hero-caption">estimated earnings</p>
+        <p class="hero-caption" id="heroCaption">estimated earnings</p>
         <div class="progress-track" aria-hidden="true"><span id="weekProgress"></span></div>
         <div class="hero-footer">
           <p class="week-range" id="weekRange"></p>
@@ -127,7 +127,7 @@
         <div id="emptyState" class="empty-state">
           <div class="empty-mark">$</div>
           <h3>Your shifts will live here</h3>
-          <p>Add your first shift to start tracking what you take home each week.</p>
+          <p>Add your first shift to start tracking your estimated earnings each week.</p>
         </div>
         <div id="shiftList" class="shift-list"></div>
       </section>
@@ -325,6 +325,6 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0/dist/umd/supabase.min.js" integrity="sha384-fPWur1rx/DE6YtXP/x0MD6dd90RgnVsz5yX/DIg7CcVAnTBZsENWuIcpvVTM39ti" crossorigin="anonymous" defer></script>
-    <script src="app.js?v=20" defer></script>
+    <script src="app.js?v=21" defer></script>
   </body>
 </html>

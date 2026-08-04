@@ -28,6 +28,7 @@ const elements = {
   todayLabel: $("#todayLabel"),
   weekRange: $("#weekRange"),
   weekTakeHome: $("#weekTakeHome"),
+  heroCaption: $("#heroCaption"),
   weekSales: $("#weekSales"),
   weekTips: $("#weekTips"),
   weekTipOut: $("#weekTipOut"),
@@ -971,6 +972,7 @@ function render() {
   elements.weekHeading.textContent = selectedWeekOffset === 0 ? "This week" : selectedWeekOffset === 1 ? "Last week" : `${selectedWeekOffset} weeks ago`;
   elements.nextWeekButton.disabled = selectedWeekOffset === 0;
   elements.weekRange.textContent = `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  elements.heroCaption.textContent = profile?.workplaceName ? `estimated earnings at ${profile.workplaceName}` : "estimated earnings";
   elements.weekTakeHome.textContent = money.format(earnings);
   elements.weekSales.textContent = withSales.length ? wholeMoney.format(sales) : "—";
   elements.weekTips.textContent = wholeMoney.format(tips);
@@ -1007,7 +1009,8 @@ function createWeekGroup(group, currentWeekStart) {
   const label = document.createElement("div");
   const title = document.createElement("strong");
   const isCurrentWeek = localDateString(group.start) === localDateString(currentWeekStart);
-  title.textContent = isCurrentWeek ? "This week" : `Week of ${group.start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  const weekTitle = isCurrentWeek ? "This week" : `Week of ${group.start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  title.textContent = profile?.workplaceName ? `${weekTitle} at ${profile.workplaceName}` : weekTitle;
   const range = document.createElement("p");
   range.textContent = `${group.entries.length} ${group.entries.length === 1 ? "shift" : "shifts"} - through ${group.end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
   label.append(title, range);
@@ -1041,7 +1044,8 @@ function createShiftRow(entry) {
   details.className = "shift-details";
   const title = document.createElement("strong");
   title.textContent = date.toLocaleDateString("en-US", { weekday: "long" });
-  const breakdown = document.createElement("p");
+  const stats = document.createElement("div");
+  stats.className = "shift-stats";
   const parts = [];
   if (entry.sales != null) {
     parts.push(`${wholeMoney.format(entry.sales)} sales`);
@@ -1051,13 +1055,12 @@ function createShiftRow(entry) {
     parts.push(`${money.format(entry.tips)} tips`);
     if (entry.tipOut > 0) parts.push(`${money.format(entry.tipOut)} tip out`);
   }
-  if (entry.hours) {
-    parts.push(`${entry.hours.toFixed(entry.hours % 1 ? 1 : 0)} hrs`);
-    if (entry.hourlyPayRate !== null) parts.push(`${money.format(basePay(entry))} base pay`);
-    parts.push(`${money.format(entryEarnings(entry) / entry.hours)}/hr earned`);
-  }
-  breakdown.textContent = parts.join(" - ");
-  details.append(title, breakdown);
+  parts.forEach((part) => {
+    const stat = document.createElement("span");
+    stat.textContent = part;
+    stats.append(stat);
+  });
+  details.append(title, stats);
   if (entry.notes) {
     const note = document.createElement("p");
     note.className = "shift-note";
@@ -1067,6 +1070,9 @@ function createShiftRow(entry) {
 
   const result = document.createElement("div");
   result.className = "shift-result";
+  const resultLabel = document.createElement("span");
+  resultLabel.className = "shift-result-label";
+  resultLabel.textContent = "earned";
   const amount = document.createElement("strong");
   amount.textContent = money.format(entryEarnings(entry));
   const remove = document.createElement("button");
@@ -1075,7 +1081,7 @@ function createShiftRow(entry) {
   remove.textContent = "Delete";
   remove.setAttribute("aria-label", `Delete ${title.textContent} shift`);
   remove.addEventListener("click", () => deleteEntry(entry.id));
-  result.append(amount, remove);
+  result.append(resultLabel, amount, remove);
 
   row.append(badge, details, result);
   return row;
