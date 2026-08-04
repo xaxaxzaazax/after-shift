@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-180.png" />
-    <link rel="stylesheet" href="styles.css?v=21" />
+    <link rel="stylesheet" href="styles.css?v=22" />
     <title>After Shift</title>
   </head>
   <body>
@@ -77,7 +77,7 @@
         <div class="progress-track" aria-hidden="true"><span id="weekProgress"></span></div>
         <div class="hero-footer">
           <p class="week-range" id="weekRange"></p>
-          <button id="goalButton" type="button">Set goals</button>
+          <button id="goalButton" type="button">Pay &amp; goals</button>
         </div>
       </section>
 
@@ -275,8 +275,8 @@
     <dialog id="goalDialog" class="info-dialog settings-dialog">
       <form id="goalForm" method="dialog">
         <button class="close-button" id="closeGoalButton" type="button" aria-label="Close">×</button>
-        <p class="eyebrow">PERSONAL GOALS</p>
-        <h2>What are you working toward?</h2>
+        <p class="eyebrow">PAY &amp; GOALS</p>
+        <h2>Pay and earnings goals</h2>
         <p>Set your hourly base pay and optional earnings targets. New shifts remember the rate used when they were saved.</p>
         <label class="settings-field">
           <span>Hourly base pay</span>
@@ -291,7 +291,7 @@
           <div><b>$</b><input id="monthlyGoalInput" type="number" inputmode="decimal" min="1" step="1" placeholder="3000" /></div>
         </label>
         <p id="goalError" class="form-error" role="alert"></p>
-        <button class="save-button" type="submit">Save goals</button>
+        <button class="save-button" type="submit">Save pay &amp; goals</button>
       </form>
     </dialog>
 
@@ -302,6 +302,7 @@
         <h2>Account and data</h2>
         <p>Your entries are securely tied to your login and available on any device. On iPhone, tap <strong>Share</strong>, then <strong>Add to Home Screen</strong> to use it like an app.</p>
         <div class="account-actions">
+          <button id="paySettingsButton" class="account-action" type="button"><span>Pay &amp; goals</span><small>Update hourly base pay and earnings targets</small></button>
           <button id="accountSignOutButton" class="account-action" type="button"><span>Sign out</span><small>Keep all saved data</small></button>
           <button id="deleteDataButton" class="account-action danger-outline" type="button"><span>Delete all data</span><small>Keep the account, remove shifts and goals</small></button>
           <button id="deleteAccountButton" class="account-action danger-solid" type="button"><span>Delete my account</span><small>Permanently remove the account and all data</small></button>
@@ -325,6 +326,6 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0/dist/umd/supabase.min.js" integrity="sha384-fPWur1rx/DE6YtXP/x0MD6dd90RgnVsz5yX/DIg7CcVAnTBZsENWuIcpvVTM39ti" crossorigin="anonymous" defer></script>
-    <script src="app.js?v=21" defer></script>
+    <script src="app.js?v=22" defer></script>
   </body>
 </html>

@@ -985,7 +985,7 @@ function render() {
   elements.shiftCount.textContent = `${thisWeek.length} ${thisWeek.length === 1 ? "shift" : "shifts"}`;
   const weeklyProgress = goals.weekly ? Math.min(100, (earnings / goals.weekly) * 100) : (selectedWeekOffset === 0 ? Math.min(100, ((now.getDay() || 7) / 7) * 100) : 100);
   elements.weekProgress.style.width = `${weeklyProgress}%`;
-  elements.goalButton.textContent = goals.weekly ? `${Math.round(weeklyProgress)}% of ${wholeMoney.format(goals.weekly)} goal` : "Set goals";
+  elements.goalButton.textContent = goals.weekly ? `${Math.round(weeklyProgress)}% of ${wholeMoney.format(goals.weekly)} goal` : "Pay & goals";
 
   const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
   elements.emptyState.hidden = sorted.length > 0;
@@ -1479,6 +1479,10 @@ $("#accountButton").addEventListener("click", () => {
   elements.accountDialog.showModal();
 });
 $("#closeAccountButton").addEventListener("click", () => elements.accountDialog.close());
+$("#paySettingsButton").addEventListener("click", () => {
+  elements.accountDialog.close();
+  openGoalDialog();
+});
 $("#deleteDataButton").addEventListener("click", deleteAllData);
 $("#deleteAccountButton").addEventListener("click", deleteAccount);
 elements.goalButton.addEventListener("click", openGoalDialog);
