@@ -89,11 +89,15 @@ const elements = {
   goalError: $("#goalError"),
   accountError: $("#accountError"),
   shiftForm: $("#shiftForm"),
+  shiftFormEyebrow: $("#shiftFormEyebrow"),
+  shiftFormHeading: $("#shiftFormHeading"),
+  saveShiftButton: $("#saveShiftButton"),
   shiftDate: $("#shiftDate"),
   salesInput: $("#salesInput"),
   tipsInput: $("#tipsInput"),
   tipOutInput: $("#tipOutInput"),
   hoursInput: $("#hoursInput"),
+  shiftHourlyPayInput: $("#shiftHourlyPayInput"),
   notesInput: $("#notesInput"),
   takeHomePreview: $("#takeHomePreview"),
   formError: $("#formError")
@@ -115,6 +119,7 @@ const legacyMigrationAttemptedFor = new Set();
 let authMode = "login";
 let selectedReportImage = null;
 let scanLoadingTimers = [];
+let editingEntryId = null;
 let onboardingStep = 0;
 let onboardingDraft = { workplace: "", role: null, tipSetup: null, hourlyRate: "", goal: "" };
 
@@ -1075,13 +1080,22 @@ function createShiftRow(entry) {
   resultLabel.textContent = "earned";
   const amount = document.createElement("strong");
   amount.textContent = money.format(entryEarnings(entry));
+  const actions = document.createElement("div");
+  actions.className = "shift-actions";
+  const edit = document.createElement("button");
+  edit.className = "edit-button";
+  edit.type = "button";
+  edit.textContent = "Edit";
+  edit.setAttribute("aria-label", `Edit ${title.textContent} shift`);
+  edit.addEventListener("click", () => openShiftForm(null, entry));
   const remove = document.createElement("button");
   remove.className = "delete-button";
   remove.type = "button";
   remove.textContent = "Delete";
   remove.setAttribute("aria-label", `Delete ${title.textContent} shift`);
   remove.addEventListener("click", () => deleteEntry(entry.id));
-  result.append(resultLabel, amount, remove);
+  actions.append(edit, remove);
+  result.append(resultLabel, amount, actions);
 
   row.append(badge, details, result);
   return row;
@@ -1097,18 +1111,31 @@ function updatePreview() {
   const tips = parseAmount(elements.tipsInput.value) || 0;
   const tipOut = parseAmount(elements.tipOutInput.value) || 0;
   const hours = Number(elements.hoursInput.value) || 0;
-  const hourlyRate = profile?.hourlyPayRate || 0;
+  const hourlyRate = Number(elements.shiftHourlyPayInput.value) || 0;
   elements.takeHomePreview.textContent = money.format(tips - tipOut + (hours * hourlyRate));
 }
 
-function openShiftForm(scannedFields = null) {
+function openShiftForm(scannedFields = null, entry = null) {
+  editingEntryId = entry?.id || null;
   elements.shiftForm.reset();
   elements.shiftDate.value = localDateString();
+  elements.shiftHourlyPayInput.value = profile?.hourlyPayRate ?? "";
+  elements.shiftFormEyebrow.textContent = entry ? "EDIT SHIFT" : "SHIFT DETAILS";
+  elements.shiftFormHeading.textContent = entry ? "Update your shift" : "How did tonight go?";
+  elements.saveShiftButton.textContent = entry ? "Save changes" : "Save shift";
   elements.formError.textContent = "";
   elements.scanNotice.hidden = true;
   elements.scanNotice.textContent = "";
 
-  if (scannedFields) {
+  if (entry) {
+    elements.shiftDate.value = entry.date;
+    elements.salesInput.value = entry.sales ?? "";
+    elements.tipsInput.value = entry.tips;
+    elements.tipOutInput.value = entry.tipOut || "";
+    elements.hoursInput.value = entry.hours ?? "";
+    elements.shiftHourlyPayInput.value = entry.hourlyPayRate ?? "";
+    elements.notesInput.value = entry.notes;
+  } else if (scannedFields) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(scannedFields.shiftDate || "")) elements.shiftDate.value = scannedFields.shiftDate;
     if (Number.isFinite(scannedFields.sales) && scannedFields.sales >= 0) elements.salesInput.value = scannedFields.sales;
     if (Number.isFinite(scannedFields.tips) && scannedFields.tips >= 0) elements.tipsInput.value = scannedFields.tips;
@@ -1125,7 +1152,7 @@ function openShiftForm(scannedFields = null) {
 
   updatePreview();
   elements.shiftDialog.showModal();
-  setTimeout(() => (scannedFields ? elements.shiftDate : elements.tipsInput).focus(), 150);
+  setTimeout(() => (scannedFields || entry ? elements.shiftDate : elements.tipsInput).focus(), 150);
 }
 
 function resetScanner() {
@@ -1268,6 +1295,7 @@ async function submitShift(event) {
   const sales = elements.salesInput.value.trim() === "" ? null : parseAmount(elements.salesInput.value);
   const tipOut = elements.tipOutInput.value.trim() === "" ? 0 : parseAmount(elements.tipOutInput.value);
   const hours = elements.hoursInput.value.trim() === "" ? null : Number(elements.hoursInput.value);
+  const hourlyPayRate = elements.shiftHourlyPayInput.value.trim() === "" ? null : Number(elements.shiftHourlyPayInput.value);
   const notes = elements.notesInput.value.trim();
 
   if (!Number.isFinite(tips) || tips < 0) {
@@ -1290,21 +1318,27 @@ async function submitShift(event) {
     elements.formError.textContent = "Hours worked must be between 0.25 and 24, or leave it blank.";
     return;
   }
+  if (hourlyPayRate !== null && (!Number.isFinite(hourlyPayRate) || hourlyPayRate < 0 || hourlyPayRate > 10000)) {
+    elements.formError.textContent = "Hourly base pay must be between $0 and $10,000, or leave it blank.";
+    return;
+  }
 
-  const saveButton = elements.shiftForm.querySelector(".save-button");
+  const saveButton = elements.saveShiftButton;
   saveButton.disabled = true;
   elements.formError.textContent = "";
-  const { data, error } = await supabaseClient
-    .from("shifts")
-    .insert({
-      shift_date: elements.shiftDate.value,
-      sales: sales === null ? null : Math.round(sales * 100) / 100,
-      tips: Math.round(tips * 100) / 100,
-      tip_out: tipOut > 0 ? Math.round(tipOut * 100) / 100 : null,
-      hours_worked: hours === null ? null : Math.round(hours * 100) / 100,
-      base_hourly_rate: profile?.hourlyPayRate ?? null,
-      notes: notes || null
-    })
+  const values = {
+    shift_date: elements.shiftDate.value,
+    sales: sales === null ? null : Math.round(sales * 100) / 100,
+    tips: Math.round(tips * 100) / 100,
+    tip_out: tipOut > 0 ? Math.round(tipOut * 100) / 100 : null,
+    hours_worked: hours === null ? null : Math.round(hours * 100) / 100,
+    base_hourly_rate: hourlyPayRate === null ? null : Math.round(hourlyPayRate * 100) / 100,
+    notes: notes || null
+  };
+  const mutation = editingEntryId
+    ? supabaseClient.from("shifts").update(values).eq("id", editingEntryId)
+    : supabaseClient.from("shifts").insert(values);
+  const { data, error } = await mutation
     .select("id, shift_date, sales, tips, tip_out, hours_worked, base_hourly_rate, notes, created_at")
     .single();
   saveButton.disabled = false;
@@ -1314,7 +1348,13 @@ async function submitShift(event) {
     return;
   }
 
-  entries.push(normalizeEntry(data));
+  const savedEntry = normalizeEntry(data);
+  if (editingEntryId) {
+    entries = entries.map((entry) => entry.id === editingEntryId ? savedEntry : entry);
+  } else {
+    entries.push(savedEntry);
+  }
+  editingEntryId = null;
   dataVersion += 1;
   render();
   elements.shiftDialog.close();
@@ -1522,6 +1562,8 @@ elements.shiftForm.addEventListener("submit", submitShift);
 elements.tipsInput.addEventListener("input", updatePreview);
 elements.tipOutInput.addEventListener("input", updatePreview);
 elements.hoursInput.addEventListener("input", updatePreview);
+elements.shiftHourlyPayInput.addEventListener("input", updatePreview);
+elements.shiftDialog.addEventListener("close", () => { editingEntryId = null; });
 elements.shiftDialog.addEventListener("click", closeOnBackdrop);
 elements.goalDialog.addEventListener("click", closeOnBackdrop);
 elements.accountDialog.addEventListener("click", closeOnBackdrop);

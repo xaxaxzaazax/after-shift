@@ -263,7 +263,10 @@ h1 { margin-bottom: 0; font-family: Georgia, serif; font-size: 2rem; letter-spac
 .shift-result { text-align: right; }
 .shift-result-label { display: block; margin-bottom: 2px; color: var(--muted); font-size: .56rem; text-transform: uppercase; letter-spacing: .05em; }
 .shift-result strong { display: block; color: var(--green); font-size: .96rem; }
-.delete-button { padding: 5px 0 0 8px; border: 0; background: transparent; color: #a79f95; font-size: .65rem; cursor: pointer; }
+.shift-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 5px; }
+.edit-button, .delete-button { padding: 0; border: 0; background: transparent; font-size: .64rem; cursor: pointer; }
+.edit-button { color: var(--green); font-weight: 750; }
+.delete-button { color: #a79f95; }
 
 .bottom-action { position: fixed; z-index: 5; right: 0; bottom: 0; left: 0; padding: 13px 20px calc(env(safe-area-inset-bottom) + 13px); background: linear-gradient(transparent, var(--cream) 26%); pointer-events: none; }
 .add-button, .save-button { display: flex; width: min(100%, 500px); min-height: 57px; align-items: center; justify-content: center; gap: 9px; margin: auto; border: 0; border-radius: 18px; background: var(--rust); box-shadow: 0 12px 28px rgba(143,67,37,.25); color: white; font-weight: 800; cursor: pointer; pointer-events: auto; }
@@ -342,7 +345,7 @@ h1 { margin-bottom: 0; font-family: Georgia, serif; font-size: 2rem; letter-spac
 
 dialog { padding: 0; border: 0; }
 dialog::backdrop { background: rgba(19,30,27,.54); backdrop-filter: blur(3px); }
-.sheet { width: min(100%, 540px); max-width: none; margin: auto auto 0; border-radius: 28px 28px 0 0; background: var(--paper); color: var(--ink); }
+.sheet { width: min(100%, 540px); max-width: none; max-height: 100dvh; overflow-y: auto; margin: auto auto 0; border-radius: 28px 28px 0 0; background: var(--paper); color: var(--ink); }
 .sheet[open] { animation: rise .25s ease-out; }
 @keyframes rise { from { transform: translateY(30px); opacity: 0; } }
 .sheet form { padding: 10px 20px calc(env(safe-area-inset-bottom) + 20px); }

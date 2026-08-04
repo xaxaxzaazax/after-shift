@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-180.png" />
-    <link rel="stylesheet" href="styles.css?v=22" />
+    <link rel="stylesheet" href="styles.css?v=23" />
     <title>After Shift</title>
   </head>
   <body>
@@ -226,8 +226,8 @@
         <div class="sheet-handle" aria-hidden="true"></div>
         <div class="sheet-heading">
           <div>
-            <p class="eyebrow">SHIFT DETAILS</p>
-            <h2>How did tonight go?</h2>
+            <p class="eyebrow" id="shiftFormEyebrow">SHIFT DETAILS</p>
+            <h2 id="shiftFormHeading">How did tonight go?</h2>
           </div>
           <button class="close-button" id="closeButton" type="button" aria-label="Close">×</button>
         </div>
@@ -256,6 +256,10 @@
             <span>Hours worked <small>optional</small></span>
             <div class="money-input hours-input"><b>H</b><input id="hoursInput" name="hours" type="number" inputmode="decimal" min="0.25" max="24" step="0.25" placeholder="6.5" /></div>
           </label>
+          <label>
+            <span>Hourly base pay <small>optional</small></span>
+            <div class="money-input"><b>$</b><input id="shiftHourlyPayInput" name="hourlyPay" type="number" inputmode="decimal" min="0" max="10000" step="0.01" placeholder="2.13" /></div>
+          </label>
         </div>
 
         <label class="notes-field">
@@ -268,7 +272,7 @@
           <strong id="takeHomePreview">$0.00</strong>
         </div>
         <p id="formError" class="form-error" role="alert"></p>
-        <button class="save-button" type="submit">Save shift</button>
+        <button class="save-button" id="saveShiftButton" type="submit">Save shift</button>
       </form>
     </dialog>
 
@@ -326,6 +330,6 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0/dist/umd/supabase.min.js" integrity="sha384-fPWur1rx/DE6YtXP/x0MD6dd90RgnVsz5yX/DIg7CcVAnTBZsENWuIcpvVTM39ti" crossorigin="anonymous" defer></script>
-    <script src="app.js?v=22" defer></script>
+    <script src="app.js?v=23" defer></script>
   </body>
 </html>
