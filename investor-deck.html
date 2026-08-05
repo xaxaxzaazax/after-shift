@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f4efe5" />
+    <title>After Shift - Investor Presentation</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #1e2c28;
+        --muted: #6e7973;
+        --cream: #f4efe5;
+        --paper: #fffdf8;
+        --green: #24594b;
+        --green-light: #d9e9df;
+        --rust: #c86740;
+        --line: rgba(30, 44, 40, 0.11);
+        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body { overflow: hidden; margin: 0; background: radial-gradient(circle at 88% 0%, rgba(200,103,64,.13), transparent 34%), var(--cream); color: var(--ink); }
+      button { color: inherit; font: inherit; }
+
+      .deck { position: relative; height: 100dvh; }
+      .slide { position: absolute; inset: 0; display: grid; place-items: center; visibility: hidden; opacity: 0; padding: clamp(20px, 4vw, 56px); transition: opacity .38s ease; overflow-y: auto; }
+      .slide.active { visibility: visible; opacity: 1; }
+      .slide-inner { display: grid; width: min(100%, 1060px); gap: clamp(22px, 4vw, 54px); grid-template-columns: 1fr; align-items: center; animation: slideIn .5s cubic-bezier(.22,.9,.36,1) both; }
+      .slide.active .slide-inner { animation: slideIn .5s cubic-bezier(.22,.9,.36,1) both; }
+      @keyframes slideIn { from { opacity: 0; transform: translateY(18px); } }
+      @media (min-width: 880px) { .slide-inner.split { grid-template-columns: 1.05fr .95fr; } }
+
+      .eyebrow { margin: 0 0 12px; color: var(--rust); font-size: clamp(.62rem, 1.3vw, .74rem); font-weight: 850; letter-spacing: .14em; }
+      h1 { margin: 0 0 18px; font-family: Georgia, serif; font-size: clamp(2.1rem, 5.4vw, 4rem); line-height: .99; letter-spacing: -.04em; }
+      h1 em { color: var(--green); font-style: normal; }
+      .lead { max-width: 520px; margin: 0; color: var(--muted); font-size: clamp(.86rem, 1.7vw, 1.02rem); line-height: 1.65; }
+      .lead b { color: var(--ink); }
+      .footnote { margin: 18px 0 0; color: #a0a69f; font-size: .66rem; line-height: 1.5; }
+
+      .title-card { text-align: center; }
+      .title-card .lead { margin: 0 auto; }
+      .brand-mark { position: relative; display: grid; width: clamp(96px, 14vw, 132px); height: clamp(96px, 14vw, 132px); place-items: center; margin: 0 auto 34px; border-radius: 32%; background: var(--green); box-shadow: 0 26px 60px rgba(36,89,75,.28); color: white; transform: rotate(-4deg); }
+      .brand-mark strong { font-family: Georgia, serif; font-size: clamp(1.9rem, 4vw, 2.6rem); }
+      .brand-mark span { position: absolute; right: -12px; bottom: -10px; display: grid; width: clamp(36px, 5vw, 46px); height: clamp(36px, 5vw, 46px); place-items: center; border: 5px solid var(--cream); border-radius: 50%; background: var(--rust); font-size: clamp(.9rem, 2vw, 1.15rem); }
+      .press-hint { margin-top: 40px; color: #a0a69f; font-size: .7rem; }
+      .press-hint b { color: var(--muted); }
+
+      .stat-row { display: grid; gap: 12px; margin-top: 28px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+      .stat-card { padding: 18px 16px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,253,248,.85); }
+      .stat-card strong { display: block; margin-bottom: 5px; color: var(--green); font-family: Georgia, serif; font-size: clamp(1.3rem, 2.6vw, 1.75rem); letter-spacing: -.02em; }
+      .stat-card span { color: var(--muted); font-size: .7rem; line-height: 1.45; }
+
+      .feature-list { display: grid; gap: 11px; margin-top: 26px; }
+      .feature-item { display: grid; grid-template-columns: 42px 1fr; gap: 13px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 17px; background: rgba(255,253,248,.85); text-align: left; }
+      .feature-item i { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 13px; background: var(--green-light); color: var(--green); font-style: normal; font-size: .95rem; font-weight: 800; }
+      .feature-item i.accent { background: #fae3d5; color: var(--rust); }
+      .feature-item strong, .feature-item small { display: block; }
+      .feature-item strong { font-size: .84rem; }
+      .feature-item small { margin-top: 2px; color: var(--muted); font-size: .68rem; line-height: 1.4; }
+
+      .phone { width: min(100%, 320px); justify-self: center; overflow: hidden; border: 7px solid #23312d; border-radius: 44px; background: var(--cream); box-shadow: 0 32px 70px rgba(30,44,40,.26); }
+      .phone-screen { padding: 22px 16px 20px; }
+      .mini-eyebrow { margin: 0 0 3px; color: var(--rust); font-size: .5rem; font-weight: 850; letter-spacing: .12em; }
+      .mini-title { margin: 0 0 14px; font-family: Georgia, serif; font-size: 1.15rem; letter-spacing: -.02em; }
+      .hero-mini { padding: 16px; border-radius: 20px; background: var(--green); box-shadow: 0 12px 26px rgba(36,89,75,.2); color: white; }
+      .hero-mini small { display: block; color: rgba(255,255,255,.65); font-size: .55rem; font-weight: 700; letter-spacing: .04em; }
+      .hero-mini strong { display: block; margin: 6px 0 2px; font-size: 1.9rem; font-weight: 780; letter-spacing: -.05em; }
+      .hero-mini em { display: block; margin-bottom: 12px; color: rgba(255,255,255,.68); font-size: .6rem; font-style: normal; }
+      .hero-track { height: 4px; overflow: hidden; border-radius: 8px; background: rgba(255,255,255,.16); }
+      .hero-track b { display: block; width: 72%; height: 100%; border-radius: inherit; background: #f2b88f; }
+      .mini-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
+      .mini-metric { padding: 10px 11px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,253,248,.9); }
+      .mini-metric small { display: block; margin-bottom: 3px; color: var(--muted); font-size: .52rem; }
+      .mini-metric strong { font-size: .8rem; }
+      .mini-shift { display: grid; grid-template-columns: 34px 1fr auto; gap: 9px; align-items: center; margin-top: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,253,248,.9); }
+      .mini-date { padding: 5px 2px; border-radius: 9px; background: var(--green-light); color: var(--green); text-align: center; }
+      .mini-date span { display: block; font-size: .42rem; font-weight: 850; letter-spacing: .07em; }
+      .mini-date strong { display: block; font-size: .78rem; }
+      .mini-shift-info strong { display: block; font-size: .68rem; }
+      .mini-chips { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+      .mini-chips span { padding: 2px 5px; border-radius: 6px; background: rgba(30,44,40,.06); color: var(--muted); font-size: .46rem; font-weight: 750; white-space: nowrap; }
+      .mini-earned { text-align: right; }
+      .mini-earned small { display: block; color: var(--muted); font-size: .42rem; letter-spacing: .05em; }
+      .mini-earned strong { color: var(--green); font-size: .76rem; }
+
+      .scan-demo { position: relative; margin-top: 12px; padding: 18px 16px 16px; border-radius: 20px; background: var(--paper); border: 1px solid var(--line); text-align: center; }
+      .scan-doc { position: relative; width: 64px; height: 78px; overflow: hidden; margin: 4px auto 12px; color: var(--green); }
+      .scan-doc svg { width: 100%; height: 100%; fill: var(--green-light); stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+      .scan-doc i { position: absolute; right: 8px; left: 8px; height: 3px; border-radius: 3px; background: var(--rust); box-shadow: 0 0 10px rgba(200,103,64,.7); animation: sweep 1.9s ease-in-out infinite; }
+      @keyframes sweep { 0%, 100% { top: 12px; opacity: .5; } 50% { top: 60px; opacity: 1; } }
+      .scan-demo p { margin: 0; color: var(--muted); font-size: .62rem; }
+      .scan-demo strong { display: block; margin-bottom: 3px; font-family: Georgia, serif; font-size: .95rem; }
+      .scan-fields { display: grid; gap: 5px; margin-top: 12px; text-align: left; }
+      .scan-field { display: flex; justify-content: space-between; padding: 7px 10px; border-radius: 10px; background: var(--green-light); font-size: .6rem; }
+      .scan-field span { color: var(--green); font-weight: 750; }
+      .scan-field b { color: var(--ink); }
+
+      .quote-card { max-width: 720px; margin: auto; text-align: center; }
+      .quote-card blockquote { margin: 0 0 22px; font-family: Georgia, serif; font-size: clamp(1.5rem, 3.6vw, 2.5rem); line-height: 1.18; letter-spacing: -.02em; }
+      .quote-card blockquote em { color: var(--rust); font-style: normal; }
+
+      .roadmap { display: grid; gap: 11px; margin-top: 26px; }
+      .roadmap-item { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; padding: 13px 15px; border: 1px solid var(--line); border-radius: 17px; background: rgba(255,253,248,.85); text-align: left; }
+      .roadmap-item time { padding: 4px 9px; border-radius: 9px; background: var(--green); color: white; font-size: .58rem; font-weight: 850; letter-spacing: .05em; white-space: nowrap; }
+      .roadmap-item time.soon { background: var(--rust); }
+      .roadmap-item time.later { background: #8b9490; }
+      .roadmap-item strong, .roadmap-item small { display: block; }
+      .roadmap-item strong { font-size: .84rem; }
+      .roadmap-item small { margin-top: 2px; color: var(--muted); font-size: .68rem; line-height: 1.45; }
+
+      .tech-grid { display: grid; gap: 11px; margin-top: 26px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+      .tech-card { padding: 16px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,253,248,.85); text-align: left; }
+      .tech-card strong { display: block; margin-bottom: 5px; color: var(--green); font-size: .8rem; }
+      .tech-card small { color: var(--muted); font-size: .68rem; line-height: 1.5; }
+
+      .controls { position: fixed; z-index: 10; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: space-between; padding: 14px clamp(16px, 3vw, 36px) calc(env(safe-area-inset-bottom) + 14px); pointer-events: none; }
+      .controls > * { pointer-events: auto; }
+      .nav-buttons { display: flex; gap: 8px; }
+      .nav-buttons button { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: rgba(255,253,248,.9); box-shadow: 0 6px 18px rgba(30,44,40,.1); font-size: 1.25rem; cursor: pointer; }
+      .nav-buttons button:disabled { opacity: .3; cursor: default; }
+      .dots { display: flex; gap: 6px; }
+      .dots button { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%; background: rgba(30,44,40,.18); cursor: pointer; transition: transform .2s ease, background .2s ease; }
+      .dots button.active { background: var(--rust); transform: scale(1.35); }
+      .counter { min-width: 52px; color: var(--muted); font-size: .68rem; font-weight: 750; text-align: right; }
+
+      @media (max-width: 879px) {
+        .phone { width: min(100%, 270px); }
+        .dots { display: none; }
+        .slide { padding-bottom: 90px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation: none !important; transition: none !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="deck" id="deck">
+
+      <!-- 1. Title -->
+      <section class="slide active">
+        <div class="slide-inner title-card">
+          <div>
+            <div class="brand-mark"><strong>AS</strong><span>$</span></div>
+            <p class="eyebrow">AFTER SHIFT</p>
+            <h1>Every tipped worker deserves to know<br /><em>what they actually earned.</em></h1>
+            <p class="lead">After Shift is a shift and tip tracker for restaurant workers - with an AI scanner that reads any tip-out report and turns it into clean, reviewable earnings data.</p>
+            <p class="press-hint">Use <b>&larr; &rarr;</b> arrow keys, tap the arrows, or swipe to navigate</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Problem -->
+      <section class="slide">
+        <div class="slide-inner">
+          <div>
+            <p class="eyebrow">THE PROBLEM</p>
+            <h1>Tipped income is a <em>black box.</em></h1>
+            <p class="lead">Millions of U.S. restaurant workers earn a sub-minimum base wage - as low as <b>$2.13/hour</b> federally - plus tips that change every single night. Most track earnings in their heads, in a notes app, or not at all.</p>
+            <div class="stat-row">
+              <div class="stat-card"><strong>$2.13/hr</strong><span>Federal tipped minimum wage - tips make up the rest</span></div>
+              <div class="stat-card"><strong>Every shift</strong><span>Sales, tips, tip-outs, and hours vary night to night</span></div>
+              <div class="stat-card"><strong>No paper trail</strong><span>Tip-out reports get thrown away; discrepancies go unnoticed</span></div>
+            </div>
+            <p class="footnote">Federal tipped minimum wage per U.S. Department of Labor. Many states set higher rates.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Solution -->
+      <section class="slide">
+        <div class="slide-inner split">
+          <div>
+            <p class="eyebrow">THE SOLUTION</p>
+            <h1>One tap after every shift. <em>Complete clarity.</em></h1>
+            <p class="lead">After Shift turns a photo of the nightly tip-out report into structured earnings data - date, sales, tips, tip-out, and hours - then combines it with the worker's base wage for a true earnings picture.</p>
+            <div class="feature-list">
+              <div class="feature-item"><i class="accent">AI</i><div><strong>Scan any report format</strong><small>Vision AI reads Toast, Aloha, Micros, handwritten sheets, and more</small></div></div>
+              <div class="feature-item"><i>$</i><div><strong>True earnings math</strong><small>Net tips + hourly base pay = what they actually walked with</small></div></div>
+              <div class="feature-item"><i>&#10003;</i><div><strong>Human review, always</strong><small>Every scanned field is confirmed by the user before saving</small></div></div>
+            </div>
+          </div>
+          <div class="phone">
+            <div class="phone-screen">
+              <p class="mini-eyebrow">TUESDAY, AUG 4</p>
+              <p class="mini-title">After Shift</p>
+              <div class="hero-mini">
+                <small>THIS WEEK</small>
+                <strong>$612.48</strong>
+                <em>estimated earnings at Cheesecake Factory</em>
+                <div class="hero-track"><b></b></div>
+              </div>
+              <div class="mini-metrics">
+                <div class="mini-metric"><small>Total tips</small><strong>$589</strong></div>
+                <div class="mini-metric"><small>Tip out</small><strong>$74</strong></div>
+                <div class="mini-metric"><small>Hours &amp; base</small><strong>24 hrs - $51</strong></div>
+                <div class="mini-metric"><small>Earnings / hour</small><strong>$25.52</strong></div>
+              </div>
+              <div class="mini-shift">
+                <div class="mini-date"><span>AUG</span><strong>3</strong></div>
+                <div class="mini-shift-info">
+                  <strong>Sunday</strong>
+                  <div class="mini-chips"><span>$450 sales</span><span>16.8% tips</span><span>2.3% tip out</span></div>
+                </div>
+                <div class="mini-earned"><small>EARNED</small><strong>$82.29</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. AI Scanner -->
+      <section class="slide">
+        <div class="slide-inner split">
+          <div>
+            <p class="eyebrow">FLAGSHIP FEATURE</p>
+            <h1>The scanner that reads <em>any</em> tip sheet.</h1>
+            <p class="lead">Every restaurant prints tip-out reports differently. After Shift uses a vision AI pipeline that understands layouts instead of matching templates - so it works on day one at any restaurant.</p>
+            <div class="feature-list">
+              <div class="feature-item"><i>1</i><div><strong>Snap a photo</strong><small>Native camera prompt - one tap from the home screen</small></div></div>
+              <div class="feature-item"><i>2</i><div><strong>AI extracts the fields</strong><small>Date, sales, tips, tip-out, hours - even partial printed dates are resolved correctly</small></div></div>
+              <div class="feature-item"><i>3</i><div><strong>Review &amp; save</strong><small>Pre-filled form, confidence warnings, nothing saved without confirmation</small></div></div>
+            </div>
+          </div>
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="scan-demo">
+                <div class="scan-doc">
+                  <svg viewBox="0 0 72 88"><path d="M15 4h32l10 10v66l-6-4-7 4-8-4-8 4-7-4-6 4V4Z" /><path d="M47 4v12h10M25 31h22M25 43h16M25 55h22" /></svg>
+                  <i></i>
+                </div>
+                <strong>Reading your report</strong>
+                <p>Finding the report date...</p>
+                <div class="scan-fields">
+                  <div class="scan-field"><span>Date</span><b>Aug 3, 2026</b></div>
+                  <div class="scan-field"><span>Sales</span><b>$450.00</b></div>
+                  <div class="scan-field"><span>Tips</span><b>$75.60</b></div>
+                  <div class="scan-field"><span>Tip out</span><b>$10.35</b></div>
+                  <div class="scan-field"><span>Hours</span><b>8.0</b></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. Earnings engine -->
+      <section class="slide">
+        <div class="slide-inner">
+          <div class="quote-card">
+            <p class="eyebrow">THE EARNINGS ENGINE</p>
+            <blockquote>"I made $100 in tips, tipped out $20, and worked 3 hours at $2.13&hellip;<br /><em>so I earned $86.39.</em>"</blockquote>
+            <p class="lead">After Shift is the only place that math happens automatically. Each shift snapshots the wage it was worked at - so raises never rewrite history. Weekly, monthly, and yearly views all include base pay, net tips, tip percentages, and true earnings per hour.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. Personalization -->
+      <section class="slide">
+        <div class="slide-inner split">
+          <div>
+            <p class="eyebrow">BUILT FOR THE INDUSTRY</p>
+            <h1>Personal from the <em>first sign-in.</em></h1>
+            <p class="lead">A five-question onboarding - all skippable - captures workplace, role, tip arrangement, base wage, and a weekly goal. That context personalizes the app and makes the AI scanner smarter about each user's reports.</p>
+            <div class="feature-list">
+              <div class="feature-item"><i>W</i><div><strong>Workplace name</strong><small>"This week at Cheesecake Factory" - it feels like their app</small></div></div>
+              <div class="feature-item"><i>R</i><div><strong>Role &amp; tip setup</strong><small>Server, bartender, host - individual tips, tip-out, or pooled</small></div></div>
+              <div class="feature-item"><i>G</i><div><strong>Goals that motivate</strong><small>Weekly &amp; monthly targets with live progress on the home screen</small></div></div>
+            </div>
+          </div>
+          <div class="phone">
+            <div class="phone-screen">
+              <p class="mini-eyebrow">4 OF 5</p>
+              <p class="mini-title">What is your hourly base pay?</p>
+              <div class="hero-mini" style="background: var(--paper); border: 1px solid var(--line); box-shadow: none;">
+                <small style="color: var(--muted);">HOURLY BASE PAY</small>
+                <strong style="color: var(--green);">$2.13</strong>
+                <em style="color: var(--muted);">For example, $2.13 per hour for a tipped server.</em>
+                <div class="hero-track" style="background: rgba(36,89,75,.12);"><b style="width: 80%; background: var(--green);"></b></div>
+              </div>
+              <div class="mini-metrics">
+                <div class="mini-metric"><small>Workplace</small><strong>Cheesecake Factory</strong></div>
+                <div class="mini-metric"><small>Role</small><strong>Server</strong></div>
+                <div class="mini-metric"><small>Tip setup</small><strong>Tips out coworkers</strong></div>
+                <div class="mini-metric"><small>Weekly goal</small><strong>$750</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. Tech & security -->
+      <section class="slide">
+        <div class="slide-inner">
+          <div>
+            <p class="eyebrow">TECHNOLOGY &amp; TRUST</p>
+            <h1>Production infrastructure, <em>privacy first.</em></h1>
+            <p class="lead">Live today as an installable web app, architected so the same secure backend powers the native iPhone app next.</p>
+            <div class="tech-grid">
+              <div class="tech-card"><strong>Supabase backend</strong><small>Postgres with row-level security - every user can only ever read their own data. Authenticated APIs, versioned migrations.</small></div>
+              <div class="tech-card"><strong>Server-side AI</strong><small>OpenAI vision runs inside a secured edge function. API keys never touch the client. Per-user daily scan limits control costs.</small></div>
+              <div class="tech-card"><strong>Full account control</strong><small>Email + password auth, password reset, delete-all-data, and permanent account deletion built in - App Store ready.</small></div>
+              <div class="tech-card"><strong>Human-in-the-loop</strong><small>AI output is always reviewed before saving. Earnings are clearly labeled as estimates - not payroll or tax advice.</small></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8. Roadmap -->
+      <section class="slide">
+        <div class="slide-inner">
+          <div>
+            <p class="eyebrow">ROADMAP</p>
+            <h1>From web app to <em>App Store.</em></h1>
+            <div class="roadmap">
+              <div class="roadmap-item"><time>LIVE</time><div><strong>Full product on the web</strong><small>AI report scanning, earnings engine with base pay, onboarding, goals, shift editing, charts - installable on any phone today</small></div></div>
+              <div class="roadmap-item"><time class="soon">NEXT</time><div><strong>Native iPhone app</strong><small>SwiftUI + VisionKit document scanning with edge detection, Face ID lock, widgets, offline entry - same Supabase backend</small></div></div>
+              <div class="roadmap-item"><time class="soon">NEXT</time><div><strong>Smarter scanning</strong><small>Per-restaurant layout memory, duplicate detection, POS-format recognition, multi-page reports</small></div></div>
+              <div class="roadmap-item"><time class="later">LATER</time><div><strong>Deeper value</strong><small>Paycheck reconciliation, CSV/PDF export for tax season, calendar view, insights, premium tier</small></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 9. Why now -->
+      <section class="slide">
+        <div class="slide-inner">
+          <div>
+            <p class="eyebrow">WHY NOW</p>
+            <h1>Vision AI just made this <em>possible.</em></h1>
+            <p class="lead">Template-based OCR could never handle thousands of different tip-sheet formats - so this product couldn't exist until now. Modern vision models understand documents the way people do, and After Shift wraps that capability in a workflow tipped workers actually need: <b>scan, review, done.</b></p>
+            <div class="stat-row">
+              <div class="stat-card"><strong>Any format</strong><span>No templates to build or maintain - new restaurants work on day one</span></div>
+              <div class="stat-card"><strong>Habit-forming</strong><span>Used at the end of every shift, several times a week</span></div>
+              <div class="stat-card"><strong>Cost-controlled</strong><span>Cheap per-scan economics with per-user rate limits already in place</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 10. Close -->
+      <section class="slide">
+        <div class="slide-inner title-card">
+          <div>
+            <div class="brand-mark"><strong>AS</strong><span>$</span></div>
+            <p class="eyebrow">AFTER SHIFT</p>
+            <h1>Know what you<br /><em>walked with.</em></h1>
+            <p class="lead">Live product. Real AI moat. A daily habit for an underserved workforce.<br /><b>Let's build the app every tipped worker opens after every shift.</b></p>
+            <p class="press-hint">Live demo: <b>xaxaxzaazax.github.io/after-shift</b></p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="controls">
+      <div class="nav-buttons">
+        <button id="prevButton" type="button" aria-label="Previous slide">&lsaquo;</button>
+        <button id="nextButton" type="button" aria-label="Next slide">&rsaquo;</button>
+      </div>
+      <div class="dots" id="dots" aria-label="Slides"></div>
+      <div class="counter" id="counter">1 / 10</div>
+    </footer>
+
+    <script>
+      const slides = [...document.querySelectorAll(".slide")];
+      const dots = document.querySelector("#dots");
+      const counter = document.querySelector("#counter");
+      const prevButton = document.querySelector("#prevButton");
+      const nextButton = document.querySelector("#nextButton");
+      let index = 0;
+
+      slides.forEach((_, i) => {
+        const dot = document.createElement("button");
+        dot.type = "button";
+        dot.setAttribute("aria-label", `Go to slide ${i + 1}`);
+        dot.addEventListener("click", () => go(i));
+        dots.append(dot);
+      });
+
+      function go(next) {
+        index = Math.max(0, Math.min(slides.length - 1, next));
+        slides.forEach((slide, i) => slide.classList.toggle("active", i === index));
+        [...dots.children].forEach((dot, i) => dot.classList.toggle("active", i === index));
+        counter.textContent = `${index + 1} / ${slides.length}`;
+        prevButton.disabled = index === 0;
+        nextButton.disabled = index === slides.length - 1;
+      }
+
+      prevButton.addEventListener("click", () => go(index - 1));
+      nextButton.addEventListener("click", () => go(index + 1));
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowRight" || event.key === " " || event.key === "PageDown") { event.preventDefault(); go(index + 1); }
+        if (event.key === "ArrowLeft" || event.key === "PageUp") { event.preventDefault(); go(index - 1); }
+        if (event.key === "Home") go(0);
+        if (event.key === "End") go(slides.length - 1);
+        if (event.key.toLowerCase() === "f") {
+          if (document.fullscreenElement) document.exitFullscreen();
+          else document.documentElement.requestFullscreen?.();
+        }
+      });
+
+      let touchStartX = null;
+      document.addEventListener("touchstart", (event) => { touchStartX = event.touches[0].clientX; }, { passive: true });
+      document.addEventListener("touchend", (event) => {
+        if (touchStartX === null) return;
+        const delta = event.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(delta) > 45) go(index + (delta < 0 ? 1 : -1));
+        touchStartX = null;
+      }, { passive: true });
+
+      go(0);
+    </script>
+  </body>
+</html>
