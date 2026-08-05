@@ -124,12 +124,12 @@ let onboardingStep = 0;
 let onboardingDraft = { workplace: "", role: null, tipSetup: null, hourlyRate: "", goal: "" };
 
 const onboardingRoles = [
-  { value: "server", label: "Server", icon: "SRV" },
-  { value: "bartender", label: "Bartender", icon: "BAR" },
-  { value: "host", label: "Host", icon: "HST" },
-  { value: "busser", label: "Busser", icon: "BUS" },
-  { value: "food_runner", label: "Food runner", icon: "RUN" },
-  { value: "other", label: "Other", icon: "ETC" }
+  { value: "server", label: "Server", description: "Table service and guest sections" },
+  { value: "bartender", label: "Bartender", description: "Bar sales, drinks, and bar guests" },
+  { value: "host", label: "Host", description: "Seating, reservations, and the front door" },
+  { value: "busser", label: "Busser", description: "Table resets and service support" },
+  { value: "food_runner", label: "Food runner", description: "Expo and food delivery" },
+  { value: "other", label: "Other", description: "Another restaurant role" }
 ];
 const onboardingTipSetups = [
   { value: "individual", label: "I keep my own tips", description: "Individual tips after any tip-out", icon: "ME" },
@@ -467,10 +467,7 @@ function onboardingChoiceList(items, selected, onSelect) {
   items.forEach((item) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `onboarding-choice${selected === item.value ? " selected" : ""}`;
-    const icon = document.createElement("span");
-    icon.className = "onboarding-choice-icon";
-    icon.textContent = item.icon;
+    button.className = `onboarding-choice${item.icon ? "" : " no-icon"}${selected === item.value ? " selected" : ""}`;
     const copy = document.createElement("span");
     const title = document.createElement("strong");
     title.textContent = item.label;
@@ -482,7 +479,13 @@ function onboardingChoiceList(items, selected, onSelect) {
     }
     const dot = document.createElement("span");
     dot.className = "onboarding-choice-dot";
-    button.append(icon, copy, dot);
+    if (item.icon) {
+      const icon = document.createElement("span");
+      icon.className = "onboarding-choice-icon";
+      icon.textContent = item.icon;
+      button.append(icon);
+    }
+    button.append(copy, dot);
     button.addEventListener("click", () => onSelect(item.value));
     list.append(button);
   });

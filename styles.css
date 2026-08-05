@@ -317,6 +317,7 @@ h1 { margin-bottom: 0; font-family: Georgia, serif; font-size: 2rem; letter-spac
 .onboarding-hint { margin: 9px 3px 0; color: #969c98; font-size: .67rem; line-height: 1.45; }
 .onboarding-choices { display: grid; gap: 10px; }
 .onboarding-choice { display: grid; grid-template-columns: 44px 1fr 20px; align-items: center; gap: 12px; min-height: 66px; padding: 10px 13px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,253,248,.8); text-align: left; cursor: pointer; }
+.onboarding-choice.no-icon { grid-template-columns: 1fr 20px; padding-left: 16px; }
 .onboarding-choice-icon { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 13px; background: var(--green-light); color: var(--green); font-size: .67rem; font-weight: 900; }
 .onboarding-choice strong, .onboarding-choice small { display: block; }
 .onboarding-choice strong { font-size: .82rem; }
