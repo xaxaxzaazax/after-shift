@@ -1838,11 +1838,11 @@ function createBattleCard(battle) {
     const result = document.createElement("p");
     result.className = "battle-result";
     if (ownNetTips > opponentNetTips) {
-      result.innerHTML = `<strong>${ownMember.nickname} is winning</strong> by ${money.format(ownNetTips - opponentNetTips)} in net tips`;
+      result.innerHTML = `<strong>${ownMember.nickname} is winning</strong> by ${money.format(ownNetTips - opponentNetTips)} in tips`;
     } else if (opponentNetTips > ownNetTips) {
-      result.innerHTML = `<strong>${opponentMember.nickname} is winning</strong> by ${money.format(opponentNetTips - ownNetTips)} in net tips`;
+      result.innerHTML = `<strong>${opponentMember.nickname} is winning</strong> by ${money.format(opponentNetTips - ownNetTips)} in tips`;
     } else {
-      result.innerHTML = `<strong>Tied</strong> at ${money.format(ownNetTips)} in net tips`;
+      result.innerHTML = `<strong>Tied</strong> at ${money.format(ownNetTips)} in tips`;
     }
 
       card.append(tugOfWar, stats, result);
