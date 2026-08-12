@@ -65,11 +65,37 @@ const elements = {
   shiftList: $("#shiftList"),
   homePage: $("#homePage"),
   earningsPage: $("#earningsPage"),
+  battlePage: $("#battlePage"),
   homeTabButton: $("#homeTabButton"),
   earningsTabButton: $("#earningsTabButton"),
+  battleTabButton: $("#battleTabButton"),
   shiftDialog: $("#shiftDialog"),
   goalDialog: $("#goalDialog"),
   accountDialog: $("#accountDialog"),
+  battleDialog: $("#battleDialog"),
+  battleList: $("#battleList"),
+  battleEmptyState: $("#battleEmptyState"),
+  newBattleButton: $("#newBattleButton"),
+  emptyStartBattleButton: $("#emptyStartBattleButton"),
+  emptyJoinBattleButton: $("#emptyJoinBattleButton"),
+  closeBattleButton: $("#closeBattleButton"),
+  battleDialogHeading: $("#battleDialogHeading"),
+  battleDialogCopy: $("#battleDialogCopy"),
+  battleChoiceActions: $("#battleChoiceActions"),
+  startBattleChoiceButton: $("#startBattleChoiceButton"),
+  joinBattleChoiceButton: $("#joinBattleChoiceButton"),
+  startBattleForm: $("#startBattleForm"),
+  joinBattleForm: $("#joinBattleForm"),
+  battleStartNickname: $("#battleStartNickname"),
+  battleStartWorkplace: $("#battleStartWorkplace"),
+  battleEndDate: $("#battleEndDate"),
+  startBattleError: $("#startBattleError"),
+  battleJoinNickname: $("#battleJoinNickname"),
+  battleCodeInput: $("#battleCodeInput"),
+  joinBattleError: $("#joinBattleError"),
+  battleCodeResult: $("#battleCodeResult"),
+  createdBattleCode: $("#createdBattleCode"),
+  copyBattleCodeButton: $("#copyBattleCodeButton"),
   reportScanButton: $("#reportScanButton"),
   reportImageInput: $("#reportImageInput"),
   scanLoading: $("#scanLoading"),
@@ -122,6 +148,9 @@ let scanLoadingTimers = [];
 let editingEntryId = null;
 let onboardingStep = 0;
 let onboardingDraft = { workplace: "", role: null, tipSetup: null, hourlyRate: "", goal: "" };
+let battles = [];
+let battleChannel = null;
+let battleRefreshTimer = null;
 
 const onboardingRoles = [
   { value: "server", label: "Server", description: "Table service and guest sections" },
@@ -339,6 +368,7 @@ async function fetchEntries() {
   const { data, error } = await supabaseClient
     .from("shifts")
     .select("id, shift_date, sales, tips, tip_out, hours_worked, base_hourly_rate, notes, created_at")
+    .eq("user_id", currentUser.id)
     .order("shift_date", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -377,6 +407,68 @@ async function fetchProfile() {
   };
 }
 
+async function fetchBattles() {
+  const { data: battleRows, error: battleError } = await supabaseClient
+    .from("battles")
+    .select("id, code, workplace_name, status, end_date, created_by, created_at, completed_at")
+    .order("created_at", { ascending: false });
+  if (battleError) throw battleError;
+  if (!battleRows.length) return [];
+
+  const battleIds = battleRows.map((battle) => battle.id);
+  const { data: memberRows, error: memberError } = await supabaseClient
+    .from("battle_members")
+    .select("battle_id, user_id, nickname, joined_at")
+    .in("battle_id", battleIds);
+  if (memberError) throw memberError;
+
+  const userIds = [...new Set(memberRows.map((member) => member.user_id))];
+  const { data: shiftRows, error: shiftError } = userIds.length
+    ? await supabaseClient.from("shifts")
+      .select("id, user_id, shift_date, sales, tips, tip_out, hours_worked, base_hourly_rate, notes, created_at, workplace_name")
+      .in("user_id", userIds)
+      .order("shift_date", { ascending: false })
+    : { data: [], error: null };
+  if (shiftError) throw shiftError;
+
+  return battleRows.map((battle) => {
+    const members = memberRows.filter((member) => member.battle_id === battle.id);
+    return {
+      ...battle,
+      members,
+      shifts: (shiftRows || []).filter((shift) => members.some((member) =>
+        member.user_id === shift.user_id
+        && shift.workplace_name === battle.workplace_name
+        && new Date(shift.created_at) >= new Date(member.joined_at)
+      ))
+    };
+  });
+}
+
+async function refreshBattles() {
+  if (!currentUser) return;
+  try {
+    battles = await fetchBattles();
+    if (!elements.battlePage.hidden) renderBattles();
+  } catch (error) {
+    if (!elements.battlePage.hidden) showSyncStatus(`Could not refresh battles: ${error.message}`);
+  }
+}
+
+function scheduleBattleRefresh() {
+  clearTimeout(battleRefreshTimer);
+  battleRefreshTimer = setTimeout(() => refreshBattles(), 180);
+}
+
+function subscribeToBattleChanges() {
+  if (battleChannel) supabaseClient.removeChannel(battleChannel);
+  battleChannel = supabaseClient.channel(`battle-updates-${currentUser.id}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "battles" }, scheduleBattleRefresh)
+    .on("postgres_changes", { event: "*", schema: "public", table: "battle_members" }, scheduleBattleRefresh)
+    .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, scheduleBattleRefresh)
+    .subscribe();
+}
+
 async function applySession(session) {
   const version = ++sessionVersion;
   const nextUser = session?.user ?? null;
@@ -392,13 +484,19 @@ async function applySession(session) {
     entries = [];
     goals = { weekly: null, monthly: null };
     profile = null;
+    battles = [];
     loadedUserId = null;
     lastLoadedAt = 0;
+    if (battleChannel) {
+      supabaseClient.removeChannel(battleChannel);
+      battleChannel = null;
+    }
     if (elements.shiftDialog.open) elements.shiftDialog.close();
     if (elements.goalDialog.open) elements.goalDialog.close();
     if (elements.accountDialog.open) elements.accountDialog.close();
     if (elements.onboardingDialog.open) elements.onboardingDialog.close();
     if (elements.resetDialog.open) elements.resetDialog.close();
+    if (elements.battleDialog.open) elements.battleDialog.close();
     render();
     showSyncStatus("");
     return;
@@ -415,16 +513,18 @@ async function applySession(session) {
 
   try {
     await migrateLegacyEntries();
-    const [nextEntries, nextGoals, nextProfile] = await Promise.all([fetchEntries(), fetchGoals(), fetchProfile()]);
+    const [nextEntries, nextGoals, nextProfile, nextBattles] = await Promise.all([fetchEntries(), fetchGoals(), fetchProfile(), fetchBattles()]);
     if (currentUser?.id !== userId) return;
     entries = nextEntries;
     goals = nextGoals;
     profile = nextProfile;
+    battles = nextBattles;
     loadedUserId = userId;
     lastLoadedAt = Date.now();
     render();
     elements.appView.hidden = false;
     showPage("home");
+    subscribeToBattleChanges();
     if (version === sessionVersion && elements.syncStatus.textContent === "Loading your shifts...") showSyncStatus("");
     if (!profile?.onboardingCompletedAt || profile.onboardingVersion < 2) openOnboarding();
   } catch (error) {
@@ -1482,20 +1582,257 @@ async function deleteAccount() {
   window.location.reload();
 }
 
+function openBattleDialog() {
+  elements.battleDialogHeading.textContent = "Start or join a battle";
+  elements.battleDialogCopy.textContent = "Choose a workplace and nickname before you begin.";
+  elements.battleChoiceActions.hidden = false;
+  elements.startBattleForm.hidden = true;
+  elements.joinBattleForm.hidden = true;
+  elements.battleCodeResult.hidden = true;
+  elements.startBattleError.textContent = "";
+  elements.joinBattleError.textContent = "";
+  elements.battleStartWorkplace.value = profile?.workplaceName || "";
+  elements.battleDialog.showModal();
+}
+
+function showStartBattleForm() {
+  elements.battleDialogHeading.textContent = "Start a battle";
+  elements.battleDialogCopy.textContent = "You'll get a code to share with one opponent.";
+  elements.battleChoiceActions.hidden = true;
+  elements.startBattleForm.hidden = false;
+  elements.joinBattleForm.hidden = true;
+  elements.battleCodeResult.hidden = true;
+  elements.startBattleError.textContent = "";
+  elements.battleStartWorkplace.value = profile?.workplaceName || "";
+  const today = localDateString();
+  elements.battleEndDate.min = today;
+  setTimeout(() => elements.battleStartNickname.focus(), 100);
+}
+
+function showJoinBattleForm() {
+  elements.battleDialogHeading.textContent = "Join a battle";
+  elements.battleDialogCopy.textContent = "Enter the six-digit code from your coworker.";
+  elements.battleChoiceActions.hidden = true;
+  elements.startBattleForm.hidden = true;
+  elements.joinBattleForm.hidden = false;
+  elements.battleCodeResult.hidden = true;
+  elements.joinBattleError.textContent = "";
+  setTimeout(() => elements.battleJoinNickname.focus(), 100);
+}
+
+async function submitStartBattle(event) {
+  event.preventDefault();
+  const nickname = elements.battleStartNickname.value.trim();
+  const workplace = elements.battleStartWorkplace.value.trim();
+  const endDate = elements.battleEndDate.value || null;
+  if (!nickname || nickname.length > 30) {
+    elements.startBattleError.textContent = "Nickname must be 1 to 30 characters.";
+    return;
+  }
+  if (!workplace || workplace.length > 80) {
+    elements.startBattleError.textContent = "Choose a workplace before starting a battle.";
+    return;
+  }
+  const saveButton = elements.startBattleForm.querySelector(".save-button");
+  saveButton.disabled = true;
+  elements.startBattleError.textContent = "";
+  const { data, error } = await supabaseClient.rpc("start_battle", {
+    p_nickname: nickname,
+    p_workplace_name: workplace,
+    p_end_date: endDate
+  });
+  saveButton.disabled = false;
+  if (error) {
+    elements.startBattleError.textContent = error.message;
+    return;
+  }
+  elements.startBattleForm.reset();
+  elements.createdBattleCode.textContent = data[0].battle_code;
+  elements.battleDialogHeading.textContent = "Battle created";
+  elements.battleDialogCopy.textContent = "Share this code with your opponent.";
+  elements.battleChoiceActions.hidden = true;
+  elements.startBattleForm.hidden = true;
+  elements.battleCodeResult.hidden = false;
+  await refreshBattles();
+}
+
+async function submitJoinBattle(event) {
+  event.preventDefault();
+  const nickname = elements.battleJoinNickname.value.trim();
+  const code = elements.battleCodeInput.value.trim();
+  if (!nickname || nickname.length > 30) {
+    elements.joinBattleError.textContent = "Nickname must be 1 to 30 characters.";
+    return;
+  }
+  if (!/^\d{6}$/.test(code)) {
+    elements.joinBattleError.textContent = "Enter a six-digit battle code.";
+    return;
+  }
+  const saveButton = elements.joinBattleForm.querySelector(".save-button");
+  saveButton.disabled = true;
+  elements.joinBattleError.textContent = "";
+  const { error } = await supabaseClient.rpc("join_battle", {
+    p_code: code,
+    p_nickname: nickname
+  });
+  saveButton.disabled = false;
+  if (error) {
+    elements.joinBattleError.textContent = error.message;
+    return;
+  }
+  elements.joinBattleForm.reset();
+  elements.battleDialog.close();
+  await refreshBattles();
+  showPage("battle");
+}
+
+function copyBattleCode() {
+  const code = elements.createdBattleCode.textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    elements.copyBattleCodeButton.textContent = "Copied!";
+    setTimeout(() => { elements.copyBattleCodeButton.textContent = "Copy code"; }, 2000);
+  });
+}
+
+async function completeBattle(battleId) {
+  if (!confirm("End this battle now? Neither player will be able to add more shifts.")) return;
+  const { error } = await supabaseClient.rpc("complete_battle", { p_battle_id: battleId });
+  if (error) {
+    showSyncStatus(`Could not end battle: ${error.message}`);
+    return;
+  }
+  await refreshBattles();
+}
+
+function renderBattles() {
+  elements.battleEmptyState.hidden = battles.length > 0;
+  elements.battleList.replaceChildren(...battles.map(createBattleCard));
+}
+
+function createBattleCard(battle) {
+  const card = document.createElement("article");
+  card.className = "battle-card";
+  const ownMember = battle.members.find((m) => m.user_id === currentUser.id);
+  const opponentMember = battle.members.find((m) => m.user_id !== currentUser.id);
+  const isCreator = battle.created_by === currentUser.id;
+  const isWaiting = battle.status === "waiting";
+  const isActive = battle.status === "active";
+  const isCompleted = battle.status === "completed";
+
+  const header = document.createElement("div");
+  header.className = "battle-card-header";
+  const title = document.createElement("strong");
+  title.textContent = isWaiting ? "Waiting for opponent" : `${ownMember.nickname} vs ${opponentMember.nickname}`;
+  const status = document.createElement("span");
+  status.className = `battle-status battle-status-${battle.status}`;
+  status.textContent = isWaiting ? "Waiting" : (isCompleted ? "Completed" : "Active");
+  header.append(title, status);
+
+  const workplace = document.createElement("p");
+  workplace.className = "battle-workplace";
+  workplace.textContent = battle.workplace_name;
+
+  const dates = document.createElement("p");
+  dates.className = "battle-dates";
+  const startDate = new Date(battle.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  dates.textContent = battle.end_date
+    ? `${startDate} - ${new Date(battle.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+    : `Started ${startDate} • No end date`;
+
+  card.append(header, workplace, dates);
+
+  if (isWaiting) {
+    const code = document.createElement("p");
+    code.className = "battle-code-display";
+    code.innerHTML = `Code: <strong>${battle.code}</strong>`;
+    card.append(code);
+  }
+
+  if (isActive || isCompleted) {
+    const ownShifts = battle.shifts.filter((s) => s.user_id === currentUser.id);
+    const opponentShifts = battle.shifts.filter((s) => s.user_id === opponentMember.user_id);
+    const ownTips = ownShifts.reduce((sum, s) => sum + Number(s.tips || 0), 0);
+    const ownTipOut = ownShifts.reduce((sum, s) => sum + Number(s.tip_out || 0), 0);
+    const ownNetTips = ownTips - ownTipOut;
+    const opponentTips = opponentShifts.reduce((sum, s) => sum + Number(s.tips || 0), 0);
+    const opponentTipOut = opponentShifts.reduce((sum, s) => sum + Number(s.tip_out || 0), 0);
+    const opponentNetTips = opponentTips - opponentTipOut;
+    const combined = ownNetTips + opponentNetTips;
+
+    const tugOfWar = document.createElement("div");
+    tugOfWar.className = "battle-tug-of-war";
+    const leftBar = document.createElement("span");
+    leftBar.className = "battle-tug-bar battle-tug-left";
+    const rightBar = document.createElement("span");
+    rightBar.className = "battle-tug-bar battle-tug-right";
+    if (combined > 0) {
+      leftBar.style.width = `${(ownNetTips / combined) * 100}%`;
+      rightBar.style.width = `${(opponentNetTips / combined) * 100}%`;
+    } else {
+      leftBar.style.width = "50%";
+      rightBar.style.width = "50%";
+    }
+    tugOfWar.append(leftBar, rightBar);
+
+    const stats = document.createElement("div");
+    stats.className = "battle-stats";
+    const ownStat = document.createElement("div");
+    ownStat.className = "battle-player-stat";
+    ownStat.innerHTML = `<span>${ownMember.nickname}</span><strong>${money.format(ownNetTips)}</strong>`;
+    const combinedStat = document.createElement("div");
+    combinedStat.className = "battle-combined-stat";
+    combinedStat.innerHTML = `<small>Combined</small><strong>${money.format(combined)}</strong>`;
+    const opponentStat = document.createElement("div");
+    opponentStat.className = "battle-player-stat";
+    opponentStat.innerHTML = `<span>${opponentMember.nickname}</span><strong>${money.format(opponentNetTips)}</strong>`;
+    stats.append(ownStat, combinedStat, opponentStat);
+
+    const result = document.createElement("p");
+    result.className = "battle-result";
+    if (ownNetTips > opponentNetTips) {
+      result.innerHTML = `<strong>${ownMember.nickname} is winning</strong> by ${money.format(ownNetTips - opponentNetTips)} in net tips`;
+    } else if (opponentNetTips > ownNetTips) {
+      result.innerHTML = `<strong>${opponentMember.nickname} is winning</strong> by ${money.format(opponentNetTips - ownNetTips)} in net tips`;
+    } else {
+      result.innerHTML = `<strong>Tied</strong> at ${money.format(ownNetTips)} in net tips`;
+    }
+
+    card.append(tugOfWar, stats, result);
+
+    if (isActive && isCreator) {
+      const actions = document.createElement("div");
+      actions.className = "battle-actions";
+      const endButton = document.createElement("button");
+      endButton.className = "secondary-button";
+      endButton.textContent = "End battle";
+      endButton.addEventListener("click", () => completeBattle(battle.id));
+      actions.append(endButton);
+      card.append(actions);
+    }
+  }
+
+  return card;
+}
+
 function closeOnBackdrop(event) {
   if (event.target === event.currentTarget) event.currentTarget.close();
 }
 
 function showPage(page) {
   const isHome = page === "home";
-  const showing = isHome ? elements.homePage : elements.earningsPage;
+  const isEarnings = page === "earnings";
+  const isBattle = page === "battle";
+  const showing = isHome ? elements.homePage : (isEarnings ? elements.earningsPage : elements.battlePage);
   const wasHidden = showing.hidden;
   elements.homePage.hidden = !isHome;
-  elements.earningsPage.hidden = isHome;
+  elements.earningsPage.hidden = !isEarnings;
+  elements.battlePage.hidden = !isBattle;
   elements.homeTabButton.classList.toggle("active", isHome);
-  elements.earningsTabButton.classList.toggle("active", !isHome);
+  elements.earningsTabButton.classList.toggle("active", isEarnings);
+  elements.battleTabButton.classList.toggle("active", isBattle);
   elements.bottomAction.hidden = !isHome || !currentUser;
-  if (!isHome) renderSummary();
+  if (isEarnings) renderSummary();
+  if (isBattle) renderBattles();
   if (wasHidden) {
     showing.classList.remove("page-enter");
     void showing.offsetWidth;
@@ -1505,6 +1842,20 @@ function showPage(page) {
 
 elements.homeTabButton.addEventListener("click", () => showPage("home"));
 elements.earningsTabButton.addEventListener("click", () => showPage("earnings"));
+elements.battleTabButton.addEventListener("click", () => showPage("battle"));
+elements.newBattleButton.addEventListener("click", openBattleDialog);
+elements.emptyStartBattleButton.addEventListener("click", openBattleDialog);
+elements.emptyJoinBattleButton.addEventListener("click", () => {
+  openBattleDialog();
+  showJoinBattleForm();
+});
+elements.closeBattleButton.addEventListener("click", () => elements.battleDialog.close());
+elements.startBattleChoiceButton.addEventListener("click", showStartBattleForm);
+elements.joinBattleChoiceButton.addEventListener("click", showJoinBattleForm);
+elements.startBattleForm.addEventListener("submit", submitStartBattle);
+elements.joinBattleForm.addEventListener("submit", submitJoinBattle);
+elements.copyBattleCodeButton.addEventListener("click", copyBattleCode);
+elements.battleDialog.addEventListener("click", closeOnBackdrop);
 elements.onboardingBackButton.addEventListener("click", () => {
   onboardingStep = Math.max(0, onboardingStep - 1);
   renderOnboarding();

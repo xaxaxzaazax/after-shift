@@ -60,6 +60,7 @@
       <nav class="page-tabs" aria-label="Pages">
         <button class="active" id="homeTabButton" type="button">This week</button>
         <button id="earningsTabButton" type="button">Earnings</button>
+        <button id="battleTabButton" type="button">Battle</button>
       </nav>
 
       <div id="homePage">
@@ -174,6 +175,28 @@
           <div class="earnings-chart" id="earningsChart" role="img" aria-label="Earnings chart"></div>
         </article>
       </section>
+      </div>
+
+      <div id="battlePage" hidden>
+        <section class="battle-section" aria-labelledby="battleHeading">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">HEAD TO HEAD</p>
+              <h2 id="battleHeading">Battle mode</h2>
+            </div>
+            <button class="text-button" id="newBattleButton" type="button">New battle</button>
+          </div>
+          <div id="battleList" class="battle-list"></div>
+          <div id="battleEmptyState" class="empty-state">
+            <div class="empty-mark">VS</div>
+            <h3>Make tips more fun</h3>
+            <p>Start a battle with someone at the same workplace, then compare your shifts as you go.</p>
+            <div class="battle-empty-actions">
+              <button class="save-button" id="emptyStartBattleButton" type="button">Start a battle</button>
+              <button class="secondary-button" id="emptyJoinBattleButton" type="button">Join with a code</button>
+            </div>
+          </div>
+        </section>
       </div>
 
       <input class="report-image-input" id="reportImageInput" type="file" accept="image/*" tabindex="-1" aria-hidden="true" />
@@ -315,6 +338,38 @@
       </div>
     </dialog>
 
+    <dialog id="battleDialog" class="info-dialog battle-dialog">
+      <div>
+        <button class="close-button" id="closeBattleButton" type="button" aria-label="Close">×</button>
+        <p class="eyebrow">BATTLE MODE</p>
+        <h2 id="battleDialogHeading">Start or join a battle</h2>
+        <p id="battleDialogCopy">Choose a workplace and nickname before you begin.</p>
+        <div class="battle-choice-actions" id="battleChoiceActions">
+          <button class="account-action" id="startBattleChoiceButton" type="button"><span>Start a battle</span><small>Get a six-digit code to share</small></button>
+          <button class="account-action" id="joinBattleChoiceButton" type="button"><span>Join a battle</span><small>Enter a code from your coworker</small></button>
+        </div>
+        <form id="startBattleForm" class="battle-form" hidden>
+          <label class="settings-field"><span>Nickname</span><div><input id="battleStartNickname" maxlength="30" placeholder="John" required /></div></label>
+          <label class="settings-field"><span>Workplace</span><div><input id="battleStartWorkplace" maxlength="80" required /></div></label>
+          <label class="settings-field"><span>End date <small>optional</small></span><div><input id="battleEndDate" type="date" /></div></label>
+          <p id="startBattleError" class="form-error" role="alert"></p>
+          <button class="save-button" type="submit">Create battle</button>
+        </form>
+        <form id="joinBattleForm" class="battle-form" hidden>
+          <label class="settings-field"><span>Nickname</span><div><input id="battleJoinNickname" maxlength="30" placeholder="Mike" required /></div></label>
+          <label class="settings-field"><span>Six-digit battle code</span><div><input id="battleCodeInput" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="123456" required /></div></label>
+          <p id="joinBattleError" class="form-error" role="alert"></p>
+          <button class="save-button" type="submit">Join battle</button>
+        </form>
+        <div id="battleCodeResult" class="battle-code-result" hidden>
+          <p class="eyebrow">YOUR BATTLE CODE</p>
+          <strong id="createdBattleCode"></strong>
+          <p>Share this code with your opponent. They can join from Battle mode.</p>
+          <button class="save-button" id="copyBattleCodeButton" type="button">Copy code</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="resetDialog" class="info-dialog settings-dialog">
       <form id="resetForm" method="dialog">
         <p class="eyebrow">RESET PASSWORD</p>
@@ -330,6 +385,6 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0/dist/umd/supabase.min.js" integrity="sha384-fPWur1rx/DE6YtXP/x0MD6dd90RgnVsz5yX/DIg7CcVAnTBZsENWuIcpvVTM39ti" crossorigin="anonymous" defer></script>
-    <script src="app.js?v=24" defer></script>
+    <script src="app.js?v=25" defer></script>
   </body>
 </html>
