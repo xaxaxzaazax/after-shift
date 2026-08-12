@@ -1734,10 +1734,6 @@ function createBattleCard(battle) {
   status.textContent = isWaiting ? "Waiting" : (isCompleted ? "Completed" : "Active");
   header.append(title, status);
 
-  const workplace = document.createElement("p");
-  workplace.className = "battle-workplace";
-  workplace.textContent = battle.workplace_name;
-
   const dates = document.createElement("p");
   dates.className = "battle-dates";
   const startDate = new Date(battle.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -1745,13 +1741,31 @@ function createBattleCard(battle) {
     ? `${startDate} - ${new Date(battle.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
     : `Started ${startDate} • No end date`;
 
-  card.append(header, workplace, dates);
+  card.append(header, dates);
 
   if (isWaiting) {
     const code = document.createElement("p");
     code.className = "battle-code-display";
     code.innerHTML = `Code: <strong>${battle.code}</strong>`;
     card.append(code);
+    
+    // Add delete/leave button for waiting battles
+    const actions = document.createElement("div");
+    actions.className = "battle-actions";
+    if (isCreator) {
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "secondary-button";
+      deleteButton.textContent = "Delete battle";
+      deleteButton.addEventListener("click", () => deleteBattle(battle.id));
+      actions.append(deleteButton);
+    } else {
+      const leaveButton = document.createElement("button");
+      leaveButton.className = "secondary-button";
+      leaveButton.textContent = "Leave battle";
+      leaveButton.addEventListener("click", () => leaveBattle(battle.id));
+      actions.append(leaveButton);
+    }
+    card.append(actions);
   }
 
   if (isActive || isCompleted) {
@@ -1822,25 +1836,15 @@ function createBattleCard(battle) {
       actions.append(leaveButton);
       card.append(actions);
     }
-  }
-
-  if (isWaiting || isCompleted) {
-    const actions = document.createElement("div");
-    actions.className = "battle-actions";
-    if (isCreator) {
+    
+    if (isCompleted && isCreator) {
+      const actions = document.createElement("div");
+      actions.className = "battle-actions";
       const deleteButton = document.createElement("button");
       deleteButton.className = "secondary-button";
       deleteButton.textContent = "Delete battle";
       deleteButton.addEventListener("click", () => deleteBattle(battle.id));
       actions.append(deleteButton);
-    } else if (isWaiting) {
-      const leaveButton = document.createElement("button");
-      leaveButton.className = "secondary-button";
-      leaveButton.textContent = "Leave battle";
-      leaveButton.addEventListener("click", () => leaveBattle(battle.id));
-      actions.append(leaveButton);
-    }
-    if (actions.children.length > 0) {
       card.append(actions);
     }
   }
