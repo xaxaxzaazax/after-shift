@@ -87,7 +87,6 @@ const elements = {
   startBattleForm: $("#startBattleForm"),
   joinBattleForm: $("#joinBattleForm"),
   battleStartNickname: $("#battleStartNickname"),
-  battleStartWorkplace: $("#battleStartWorkplace"),
   battleEndDate: $("#battleEndDate"),
   startBattleError: $("#startBattleError"),
   battleJoinNickname: $("#battleJoinNickname"),
@@ -410,7 +409,7 @@ async function fetchProfile() {
 async function fetchBattles() {
   const { data: battleRows, error: battleError } = await supabaseClient
     .from("battles")
-    .select("id, code, workplace_name, status, end_date, created_by, created_at, completed_at")
+    .select("id, code, status, end_date, created_by, created_at, completed_at")
     .order("created_at", { ascending: false });
   if (battleError) throw battleError;
   if (!battleRows.length) return [];
@@ -434,7 +433,6 @@ async function fetchBattles() {
       members,
       shifts: (shiftRows || []).filter((shift) => members.some((member) =>
         member.user_id === shift.user_id
-        && shift.workplace_name === battle.workplace_name
         && new Date(shift.created_at) >= new Date(member.joined_at)
       ))
     };
@@ -1587,7 +1585,6 @@ function openBattleDialog() {
   elements.battleCodeResult.hidden = true;
   elements.startBattleError.textContent = "";
   elements.joinBattleError.textContent = "";
-  elements.battleStartWorkplace.value = profile?.workplaceName || "";
   elements.battleDialog.showModal();
 }
 
@@ -1599,7 +1596,6 @@ function showStartBattleForm() {
   elements.joinBattleForm.hidden = true;
   elements.battleCodeResult.hidden = true;
   elements.startBattleError.textContent = "";
-  elements.battleStartWorkplace.value = profile?.workplaceName || "";
   const today = localDateString();
   elements.battleEndDate.min = today;
   setTimeout(() => elements.battleStartNickname.focus(), 100);
@@ -1619,14 +1615,9 @@ function showJoinBattleForm() {
 async function submitStartBattle(event) {
   event.preventDefault();
   const nickname = elements.battleStartNickname.value.trim();
-  const workplace = elements.battleStartWorkplace.value.trim();
   const endDate = elements.battleEndDate.value || null;
   if (!nickname || nickname.length > 30) {
     elements.startBattleError.textContent = "Nickname must be 1 to 30 characters.";
-    return;
-  }
-  if (!workplace || workplace.length > 80) {
-    elements.startBattleError.textContent = "Choose a workplace before starting a battle.";
     return;
   }
   const saveButton = elements.startBattleForm.querySelector(".save-button");
@@ -1634,7 +1625,6 @@ async function submitStartBattle(event) {
   elements.startBattleError.textContent = "";
   const { data, error } = await supabaseClient.rpc("start_battle", {
     p_nickname: nickname,
-    p_workplace_name: workplace,
     p_end_date: endDate
   });
   saveButton.disabled = false;
