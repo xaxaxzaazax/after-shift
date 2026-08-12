@@ -1779,6 +1779,19 @@ function createBattleCard(battle) {
       message.className = "battle-empty-state";
       message.textContent = "Opponent left the battle";
       card.append(message);
+      
+      // Add delete button when opponent left
+      const actions = document.createElement("div");
+      actions.className = "battle-actions";
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "secondary-button";
+      deleteButton.textContent = "Delete battle";
+      deleteButton.addEventListener("click", (e) => {
+        e.stopPropagation();
+        deleteBattle(battle.id);
+      });
+      actions.append(deleteButton);
+      card.append(actions);
     } else {
       const ownShifts = battle.shifts.filter((s) => s.user_id === currentUser.id);
       const opponentShifts = battle.shifts.filter((s) => s.user_id === opponentMember.user_id);
