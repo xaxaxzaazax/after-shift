@@ -1690,6 +1690,26 @@ async function completeBattle(battleId) {
   await refreshBattles();
 }
 
+async function deleteBattle(battleId) {
+  if (!confirm("Delete this battle permanently? This cannot be undone.")) return;
+  const { error } = await supabaseClient.rpc("delete_battle", { p_battle_id: battleId });
+  if (error) {
+    showSyncStatus(`Could not delete battle: ${error.message}`);
+    return;
+  }
+  await refreshBattles();
+}
+
+async function leaveBattle(battleId) {
+  if (!confirm("Leave this battle? Your shifts will no longer be counted.")) return;
+  const { error } = await supabaseClient.rpc("leave_battle", { p_battle_id: battleId });
+  if (error) {
+    showSyncStatus(`Could not leave battle: ${error.message}`);
+    return;
+  }
+  await refreshBattles();
+}
+
 function renderBattles() {
   elements.battleEmptyState.hidden = battles.length > 0;
   elements.battleList.replaceChildren(...battles.map(createBattleCard));
@@ -1785,14 +1805,42 @@ function createBattleCard(battle) {
 
     card.append(tugOfWar, stats, result);
 
-    if (isActive && isCreator) {
+    if (isActive) {
       const actions = document.createElement("div");
       actions.className = "battle-actions";
-      const endButton = document.createElement("button");
-      endButton.className = "secondary-button";
-      endButton.textContent = "End battle";
-      endButton.addEventListener("click", () => completeBattle(battle.id));
-      actions.append(endButton);
+      if (isCreator) {
+        const endButton = document.createElement("button");
+        endButton.className = "secondary-button";
+        endButton.textContent = "End battle";
+        endButton.addEventListener("click", () => completeBattle(battle.id));
+        actions.append(endButton);
+      }
+      const leaveButton = document.createElement("button");
+      leaveButton.className = "secondary-button";
+      leaveButton.textContent = "Leave battle";
+      leaveButton.addEventListener("click", () => leaveBattle(battle.id));
+      actions.append(leaveButton);
+      card.append(actions);
+    }
+  }
+
+  if (isWaiting || isCompleted) {
+    const actions = document.createElement("div");
+    actions.className = "battle-actions";
+    if (isCreator) {
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "secondary-button";
+      deleteButton.textContent = "Delete battle";
+      deleteButton.addEventListener("click", () => deleteBattle(battle.id));
+      actions.append(deleteButton);
+    } else if (isWaiting) {
+      const leaveButton = document.createElement("button");
+      leaveButton.className = "secondary-button";
+      leaveButton.textContent = "Leave battle";
+      leaveButton.addEventListener("click", () => leaveBattle(battle.id));
+      actions.append(leaveButton);
+    }
+    if (actions.children.length > 0) {
       card.append(actions);
     }
   }
