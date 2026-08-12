@@ -422,13 +422,9 @@ async function fetchBattles() {
     .in("battle_id", battleIds);
   if (memberError) throw memberError;
 
-  const userIds = [...new Set(memberRows.map((member) => member.user_id))];
-  const { data: shiftRows, error: shiftError } = userIds.length
-    ? await supabaseClient.from("shifts")
-      .select("id, user_id, shift_date, sales, tips, tip_out, hours_worked, base_hourly_rate, notes, created_at, workplace_name")
-      .in("user_id", userIds)
-      .order("shift_date", { ascending: false })
-    : { data: [], error: null };
+  const { data: shiftRows, error: shiftError } = await supabaseClient.rpc("get_battle_shifts", {
+    p_battle_ids: battleIds
+  });
   if (shiftError) throw shiftError;
 
   return battleRows.map((battle) => {
