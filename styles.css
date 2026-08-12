@@ -437,7 +437,7 @@ dialog::backdrop { background: rgba(19,30,27,.54); backdrop-filter: blur(3px); }
 .battle-code-result { margin-top: 16px; }
 .battle-code-result strong { display: block; margin: 12px 0; font-size: 2rem; letter-spacing: .12em; }
 
-.battle-detail-dialog { width: 94%; max-width: 520px; padding: 0; border: 0; border-radius: 24px; background: var(--page); box-shadow: 0 8px 32px rgba(43,29,20,.18); }
+.battle-detail-dialog { width: 94%; max-width: 520px; padding: 0; border: 0; border-radius: 24px; background: var(--paper); box-shadow: 0 8px 32px rgba(43,29,20,.18); }
 .battle-detail-container { position: relative; padding: 28px 24px 24px; }
 .battle-detail-dialog .close-button { position: absolute; top: 16px; right: 16px; z-index: 10; }
 .battle-detail-header { text-align: center; margin-bottom: 24px; }
@@ -455,7 +455,7 @@ dialog::backdrop { background: rgba(19,30,27,.54); backdrop-filter: blur(3px); }
 .battle-player-tips { color: var(--green); font-size: 1.4rem; font-weight: 850; }
 .battle-player:last-child .battle-player-tips { color: var(--rust); }
 .battle-vs-divider { width: 2px; height: 80px; background: linear-gradient(to bottom, transparent, var(--line), transparent); position: relative; }
-.battle-vs-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 6px 10px; background: var(--page); color: var(--muted); font-size: .68rem; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; }
+.battle-vs-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 6px 10px; background: var(--paper); color: var(--muted); font-size: .68rem; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; }
 .battle-detail-tug { margin: 0 0 32px; }
 .battle-detail-tug-label { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: .72rem; color: var(--muted); }
 .battle-detail-tug-bar { display: flex; height: 24px; overflow: hidden; border-radius: 24px; background: rgba(30,44,40,.06); box-shadow: inset 0 2px 4px rgba(43,29,20,.08); }
