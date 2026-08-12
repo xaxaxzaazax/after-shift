@@ -73,6 +73,9 @@ const elements = {
   goalDialog: $("#goalDialog"),
   accountDialog: $("#accountDialog"),
   battleDialog: $("#battleDialog"),
+  battleDetailDialog: $("#battleDetailDialog"),
+  battleDetailContent: $("#battleDetailContent"),
+  closeBattleDetailButton: $("#closeBattleDetailButton"),
   battleList: $("#battleList"),
   battleEmptyState: $("#battleEmptyState"),
   newBattleButton: $("#newBattleButton"),
@@ -1718,6 +1721,8 @@ function renderBattles() {
 function createBattleCard(battle) {
   const card = document.createElement("article");
   card.className = "battle-card";
+  card.style.cursor = "pointer";
+  card.addEventListener("click", () => openBattleDetail(battle));
   const ownMember = battle.members.find((m) => m.user_id === currentUser.id);
   const opponentMember = battle.members.find((m) => m.user_id !== currentUser.id);
   const isCreator = battle.created_by === currentUser.id;
@@ -1859,6 +1864,251 @@ function createBattleCard(battle) {
   return card;
 }
 
+function openBattleDetail(battle) {
+  const ownMember = battle.members.find((m) => m.user_id === currentUser.id);
+  const opponentMember = battle.members.find((m) => m.user_id !== currentUser.id);
+  const isCreator = battle.created_by === currentUser.id;
+  const isWaiting = battle.status === "waiting";
+  const isActive = battle.status === "active";
+  const isCompleted = battle.status === "completed";
+
+  const container = document.createElement("div");
+
+  // Header
+  const header = document.createElement("div");
+  header.className = "battle-detail-header";
+  
+  const status = document.createElement("div");
+  status.className = `battle-detail-status battle-status-${battle.status}`;
+  status.textContent = isWaiting ? "Waiting" : (isCompleted ? "Completed" : "Active");
+  
+  const title = document.createElement("h2");
+  title.className = "battle-detail-title";
+  title.textContent = !opponentMember ? "Waiting for opponent" : `${ownMember.nickname} vs ${opponentMember.nickname}`;
+  
+  header.append(status, title);
+
+  if (battle.end_date) {
+    const dates = document.createElement("p");
+    dates.className = "battle-detail-dates";
+    const endDate = new Date(battle.end_date);
+    dates.textContent = `Ends ${endDate.toLocaleDateString()}`;
+    header.append(dates);
+  } else {
+    const dates = document.createElement("p");
+    dates.className = "battle-detail-dates";
+    dates.textContent = "No end date";
+    header.append(dates);
+  }
+
+  container.append(header);
+
+  // Waiting state
+  if (isWaiting) {
+    const code = document.createElement("div");
+    code.className = "battle-code-display";
+    code.innerHTML = `<p style="margin: 0 0 8px; font-size: .68rem; color: var(--muted);">BATTLE CODE</p><strong>${battle.code}</strong><p style="margin: 8px 0 0; font-size: .72rem;">Share this code with your opponent</p>`;
+    container.append(code);
+
+    const actions = document.createElement("div");
+    actions.className = "battle-detail-actions";
+    if (isCreator) {
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "secondary-button";
+      deleteButton.textContent = "Delete battle";
+      deleteButton.addEventListener("click", (e) => {
+        e.stopPropagation();
+        elements.battleDetailDialog.close();
+        deleteBattle(battle.id);
+      });
+      actions.append(deleteButton);
+    } else {
+      const leaveButton = document.createElement("button");
+      leaveButton.className = "secondary-button";
+      leaveButton.textContent = "Leave battle";
+      leaveButton.addEventListener("click", (e) => {
+        e.stopPropagation();
+        elements.battleDetailDialog.close();
+        leaveBattle(battle.id);
+      });
+      actions.append(leaveButton);
+    }
+    container.append(actions);
+  }
+
+  // Active or completed
+  if ((isActive || isCompleted) && opponentMember) {
+    const ownShifts = battle.shifts.filter((s) => s.user_id === currentUser.id);
+    const opponentShifts = battle.shifts.filter((s) => s.user_id === opponentMember.user_id);
+    const ownTips = ownShifts.reduce((sum, s) => sum + Number(s.tips || 0), 0);
+    const ownTipOut = ownShifts.reduce((sum, s) => sum + Number(s.tip_out || 0), 0);
+    const ownNetTips = ownTips - ownTipOut;
+    const ownSales = ownShifts.reduce((sum, s) => sum + Number(s.sales || 0), 0);
+    const ownHours = ownShifts.reduce((sum, s) => sum + Number(s.hours || 0), 0);
+    
+    const opponentTips = opponentShifts.reduce((sum, s) => sum + Number(s.tips || 0), 0);
+    const opponentTipOut = opponentShifts.reduce((sum, s) => sum + Number(s.tip_out || 0), 0);
+    const opponentNetTips = opponentTips - opponentTipOut;
+    const opponentSales = opponentShifts.reduce((sum, s) => sum + Number(s.sales || 0), 0);
+    const opponentHours = opponentShifts.reduce((sum, s) => sum + Number(s.hours || 0), 0);
+    
+    const combined = ownNetTips + opponentNetTips;
+
+    // Versus section
+    const versus = document.createElement("div");
+    versus.className = "battle-versus";
+    
+    const ownPlayer = document.createElement("div");
+    ownPlayer.className = "battle-player";
+    const ownAvatar = document.createElement("div");
+    ownAvatar.className = "battle-player-avatar";
+    ownAvatar.textContent = ownMember.nickname.charAt(0).toUpperCase();
+    const ownName = document.createElement("div");
+    ownName.className = "battle-player-name";
+    ownName.textContent = ownMember.nickname;
+    const ownAmount = document.createElement("div");
+    ownAmount.className = "battle-player-tips";
+    ownAmount.textContent = money.format(ownNetTips);
+    ownPlayer.append(ownAvatar, ownName, ownAmount);
+
+    const divider = document.createElement("div");
+    divider.className = "battle-vs-divider";
+    const vsText = document.createElement("span");
+    vsText.className = "battle-vs-text";
+    vsText.textContent = "VS";
+    divider.append(vsText);
+
+    const opponentPlayer = document.createElement("div");
+    opponentPlayer.className = "battle-player";
+    const opponentAvatar = document.createElement("div");
+    opponentAvatar.className = "battle-player-avatar";
+    opponentAvatar.textContent = opponentMember.nickname.charAt(0).toUpperCase();
+    const opponentName = document.createElement("div");
+    opponentName.className = "battle-player-name";
+    opponentName.textContent = opponentMember.nickname;
+    const opponentAmount = document.createElement("div");
+    opponentAmount.className = "battle-player-tips";
+    opponentAmount.textContent = money.format(opponentNetTips);
+    opponentPlayer.append(opponentAvatar, opponentName, opponentAmount);
+
+    versus.append(ownPlayer, divider, opponentPlayer);
+    container.append(versus);
+
+    // Tug of war
+    const tugSection = document.createElement("div");
+    tugSection.className = "battle-detail-tug";
+    const tugLabel = document.createElement("div");
+    tugLabel.className = "battle-detail-tug-label";
+    const leftPct = combined > 0 ? Math.round((ownNetTips / combined) * 100) : 50;
+    const rightPct = 100 - leftPct;
+    tugLabel.innerHTML = `<span>${leftPct}%</span><span>${rightPct}%</span>`;
+    const tugBar = document.createElement("div");
+    tugBar.className = "battle-detail-tug-bar";
+    const leftBar = document.createElement("div");
+    leftBar.className = "battle-detail-tug-left";
+    leftBar.style.width = `${leftPct}%`;
+    const rightBar = document.createElement("div");
+    rightBar.className = "battle-detail-tug-right";
+    rightBar.style.width = `${rightPct}%`;
+    tugBar.append(leftBar, rightBar);
+    tugSection.append(tugLabel, tugBar);
+    container.append(tugSection);
+
+    // Winner message
+    const winner = document.createElement("div");
+    winner.className = "battle-detail-winner";
+    if (ownNetTips > opponentNetTips) {
+      winner.innerHTML = `<strong>${ownMember.nickname} is winning!</strong><p>Leading by ${money.format(ownNetTips - opponentNetTips)}</p>`;
+    } else if (opponentNetTips > ownNetTips) {
+      winner.innerHTML = `<strong>${opponentMember.nickname} is winning!</strong><p>Leading by ${money.format(opponentNetTips - ownNetTips)}</p>`;
+    } else {
+      winner.innerHTML = `<strong>Tied!</strong><p>Both at ${money.format(ownNetTips)}</p>`;
+    }
+    container.append(winner);
+
+    // Stats
+    const stats = document.createElement("div");
+    stats.className = "battle-detail-stats";
+
+    // Combined tips
+    const combinedRow = document.createElement("div");
+    combinedRow.className = "battle-stat-row";
+    combinedRow.innerHTML = `<div><strong>Net Tips</strong><span>${money.format(ownNetTips)}</span></div><div>Combined</div><div><strong>Net Tips</strong><span>${money.format(opponentNetTips)}</span></div>`;
+    stats.append(combinedRow);
+
+    // Sales
+    const salesRow = document.createElement("div");
+    salesRow.className = "battle-stat-row";
+    salesRow.innerHTML = `<div><strong>Sales</strong><span>${money.format(ownSales)}</span></div><div>vs</div><div><strong>Sales</strong><span>${money.format(opponentSales)}</span></div>`;
+    stats.append(salesRow);
+
+    // Tip %
+    const ownPct = ownSales > 0 ? ((ownTips / ownSales) * 100).toFixed(1) : "0.0";
+    const oppPct = opponentSales > 0 ? ((opponentTips / opponentSales) * 100).toFixed(1) : "0.0";
+    const tipPctRow = document.createElement("div");
+    tipPctRow.className = "battle-stat-row";
+    tipPctRow.innerHTML = `<div><strong>Tip %</strong><span>${ownPct}%</span></div><div>vs</div><div><strong>Tip %</strong><span>${oppPct}%</span></div>`;
+    stats.append(tipPctRow);
+
+    // Hours
+    const hoursRow = document.createElement("div");
+    hoursRow.className = "battle-stat-row";
+    hoursRow.innerHTML = `<div><strong>Hours</strong><span>${ownHours.toFixed(1)}</span></div><div>vs</div><div><strong>Hours</strong><span>${opponentHours.toFixed(1)}</span></div>`;
+    stats.append(hoursRow);
+
+    container.append(stats);
+
+    // Actions
+    if (isActive || isCompleted) {
+      const actions = document.createElement("div");
+      actions.className = "battle-detail-actions";
+      
+      if (isActive && isCreator) {
+        const endButton = document.createElement("button");
+        endButton.className = "secondary-button";
+        endButton.textContent = "End battle";
+        endButton.addEventListener("click", (e) => {
+          e.stopPropagation();
+          elements.battleDetailDialog.close();
+          completeBattle(battle.id);
+        });
+        actions.append(endButton);
+      }
+
+      if (isActive) {
+        const leaveButton = document.createElement("button");
+        leaveButton.className = "secondary-button";
+        leaveButton.textContent = "Leave battle";
+        leaveButton.addEventListener("click", (e) => {
+          e.stopPropagation();
+          elements.battleDetailDialog.close();
+          leaveBattle(battle.id);
+        });
+        actions.append(leaveButton);
+      }
+
+      if (isCompleted && isCreator) {
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "secondary-button";
+        deleteButton.textContent = "Delete battle";
+        deleteButton.addEventListener("click", (e) => {
+          e.stopPropagation();
+          elements.battleDetailDialog.close();
+          deleteBattle(battle.id);
+        });
+        actions.append(deleteButton);
+      }
+
+      if (actions.children.length > 0) {
+        container.append(actions);
+      }
+    }
+  }
+
+  elements.battleDetailContent.replaceChildren(container);
+  elements.battleDetailDialog.showModal();
+}
+
 function closeOnBackdrop(event) {
   if (event.target === event.currentTarget) event.currentTarget.close();
 }
@@ -1895,6 +2145,8 @@ elements.emptyJoinBattleButton.addEventListener("click", () => {
   showJoinBattleForm();
 });
 elements.closeBattleButton.addEventListener("click", () => elements.battleDialog.close());
+elements.closeBattleDetailButton.addEventListener("click", () => elements.battleDetailDialog.close());
+elements.battleDetailDialog.addEventListener("click", closeOnBackdrop);
 elements.startBattleChoiceButton.addEventListener("click", showStartBattleForm);
 elements.joinBattleChoiceButton.addEventListener("click", showJoinBattleForm);
 elements.startBattleForm.addEventListener("submit", submitStartBattle);

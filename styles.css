@@ -437,6 +437,42 @@ dialog::backdrop { background: rgba(19,30,27,.54); backdrop-filter: blur(3px); }
 .battle-code-result { margin-top: 16px; }
 .battle-code-result strong { display: block; margin: 12px 0; font-size: 2rem; letter-spacing: .12em; }
 
+.battle-detail-dialog { width: 94%; max-width: 520px; padding: 0; border: 0; border-radius: 24px; background: var(--page); box-shadow: 0 8px 32px rgba(43,29,20,.18); }
+.battle-detail-container { position: relative; padding: 28px 24px 24px; }
+.battle-detail-dialog .close-button { position: absolute; top: 16px; right: 16px; z-index: 10; }
+.battle-detail-header { text-align: center; margin-bottom: 24px; }
+.battle-detail-header .eyebrow { margin-bottom: 8px; }
+.battle-detail-status { display: inline-block; margin-bottom: 12px; padding: 6px 14px; border-radius: 20px; background: var(--green-light); color: var(--green); font-size: .64rem; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; }
+.battle-detail-status.battle-status-waiting { background: #f5efe6; color: var(--rust); }
+.battle-detail-status.battle-status-completed { background: rgba(30,44,40,.08); color: var(--muted); }
+.battle-detail-title { margin: 0 0 8px; font-size: 1.5rem; font-weight: 850; line-height: 1.2; }
+.battle-detail-dates { color: var(--muted); font-size: .72rem; }
+.battle-versus { display: grid; grid-template-columns: 1fr auto 1fr; gap: 20px; align-items: center; margin: 32px 0; }
+.battle-player { text-align: center; }
+.battle-player-avatar { width: 72px; height: 72px; margin: 0 auto 12px; border-radius: 50%; background: linear-gradient(135deg, var(--green), #3a7d66); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.8rem; font-weight: 850; box-shadow: 0 4px 12px rgba(43,29,20,.12); }
+.battle-player:last-child .battle-player-avatar { background: linear-gradient(135deg, var(--rust), #8b4a1a); }
+.battle-player-name { margin-bottom: 6px; font-size: .88rem; font-weight: 750; }
+.battle-player-tips { color: var(--green); font-size: 1.4rem; font-weight: 850; }
+.battle-player:last-child .battle-player-tips { color: var(--rust); }
+.battle-vs-divider { width: 2px; height: 80px; background: linear-gradient(to bottom, transparent, var(--line), transparent); position: relative; }
+.battle-vs-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 6px 10px; background: var(--page); color: var(--muted); font-size: .68rem; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; }
+.battle-detail-tug { margin: 0 0 32px; }
+.battle-detail-tug-label { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: .72rem; color: var(--muted); }
+.battle-detail-tug-bar { display: flex; height: 24px; overflow: hidden; border-radius: 24px; background: rgba(30,44,40,.06); box-shadow: inset 0 2px 4px rgba(43,29,20,.08); }
+.battle-detail-tug-left { background: linear-gradient(90deg, var(--green), #3a7d66); transition: width 500ms cubic-bezier(.34,1.56,.64,1); }
+.battle-detail-tug-right { background: linear-gradient(90deg, #3a7d66, var(--rust)); transition: width 500ms cubic-bezier(.34,1.56,.64,1); }
+.battle-detail-winner { margin: 0 0 32px; padding: 18px; border-radius: 18px; background: var(--green-light); color: var(--green); text-align: center; }
+.battle-detail-winner strong { display: block; margin-bottom: 4px; font-size: 1.1rem; }
+.battle-detail-winner p { margin: 0; font-size: .8rem; }
+.battle-detail-stats { display: grid; gap: 12px; margin-bottom: 24px; }
+.battle-stat-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; padding: 14px; border-radius: 14px; background: rgba(30,44,40,.04); align-items: center; }
+.battle-stat-row strong { display: block; font-size: .64rem; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
+.battle-stat-row span { font-size: .92rem; font-weight: 750; }
+.battle-stat-row > div:first-child { text-align: left; }
+.battle-stat-row > div:last-child { text-align: right; }
+.battle-stat-row > div:nth-child(2) { text-align: center; color: var(--muted); font-size: .78rem; }
+.battle-detail-actions { display: flex; gap: 10px; justify-content: center; margin-top: 24px; }
+
 @media (min-width: 700px) {
   .app-shell { padding-top: 42px; }
   .sheet { margin-bottom: 20px; border-radius: 28px; }
