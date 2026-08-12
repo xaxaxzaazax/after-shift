@@ -411,7 +411,8 @@ dialog::backdrop { background: rgba(19,30,27,.54); backdrop-filter: blur(3px); }
 .battle-status-active { background: var(--green-light); color: var(--green); }
 .battle-status-completed { background: #e7e3dc; color: #77736e; }
 .battle-workplace { margin: 0 0 4px; color: var(--muted); font-size: .75rem; }
-.battle-dates { margin: 0 0 16px; color: var(--muted); font-size: .68rem; }
+.battle-dates { margin: 0 0 8px; color: var(--muted); font-size: .68rem; }
+.battle-click-hint { margin: 0; color: var(--rust); font-size: .68rem; font-weight: 600; }
 .battle-code-display { margin: 12px 0 0; padding: 12px; border-radius: 14px; background: var(--green-light); color: var(--green); font-size: .78rem; text-align: center; }
 .battle-code-display strong { font-size: 1.1rem; letter-spacing: .08em; }
 .battle-tug-of-war { display: flex; height: 12px; overflow: hidden; margin: 0 0 14px; border-radius: 12px; background: rgba(30,44,40,.08); }

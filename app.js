@@ -1746,7 +1746,11 @@ function createBattleCard(battle) {
     ? `${startDate} - ${new Date(battle.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
     : `Started ${startDate} • No end date`;
 
-  card.append(header, dates);
+  const clickHint = document.createElement("p");
+  clickHint.className = "battle-click-hint";
+  clickHint.textContent = "Tap to view details";
+
+  card.append(header, dates, clickHint);
 
   if (isWaiting) {
     const code = document.createElement("p");
@@ -1957,13 +1961,13 @@ function openBattleDetail(battle) {
     const ownTipOut = ownShifts.reduce((sum, s) => sum + Number(s.tip_out || 0), 0);
     const ownNetTips = ownTips - ownTipOut;
     const ownSales = ownShifts.reduce((sum, s) => sum + Number(s.sales || 0), 0);
-    const ownHours = ownShifts.reduce((sum, s) => sum + Number(s.hours || 0), 0);
+    const ownHours = ownShifts.reduce((sum, s) => sum + Number(s.hours_worked || 0), 0);
     
     const opponentTips = opponentShifts.reduce((sum, s) => sum + Number(s.tips || 0), 0);
     const opponentTipOut = opponentShifts.reduce((sum, s) => sum + Number(s.tip_out || 0), 0);
     const opponentNetTips = opponentTips - opponentTipOut;
     const opponentSales = opponentShifts.reduce((sum, s) => sum + Number(s.sales || 0), 0);
-    const opponentHours = opponentShifts.reduce((sum, s) => sum + Number(s.hours || 0), 0);
+    const opponentHours = opponentShifts.reduce((sum, s) => sum + Number(s.hours_worked || 0), 0);
     
     const combined = ownNetTips + opponentNetTips;
 
