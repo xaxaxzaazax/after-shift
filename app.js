@@ -1728,7 +1728,7 @@ function createBattleCard(battle) {
   const header = document.createElement("div");
   header.className = "battle-card-header";
   const title = document.createElement("strong");
-  title.textContent = isWaiting ? "Waiting for opponent" : `${ownMember.nickname} vs ${opponentMember.nickname}`;
+  title.textContent = !opponentMember ? "Waiting for opponent" : `${ownMember.nickname} vs ${opponentMember.nickname}`;
   const status = document.createElement("span");
   status.className = `battle-status battle-status-${battle.status}`;
   status.textContent = isWaiting ? "Waiting" : (isCompleted ? "Completed" : "Active");
@@ -1769,15 +1769,21 @@ function createBattleCard(battle) {
   }
 
   if (isActive || isCompleted) {
-    const ownShifts = battle.shifts.filter((s) => s.user_id === currentUser.id);
-    const opponentShifts = battle.shifts.filter((s) => s.user_id === opponentMember.user_id);
-    const ownTips = ownShifts.reduce((sum, s) => sum + Number(s.tips || 0), 0);
-    const ownTipOut = ownShifts.reduce((sum, s) => sum + Number(s.tip_out || 0), 0);
-    const ownNetTips = ownTips - ownTipOut;
-    const opponentTips = opponentShifts.reduce((sum, s) => sum + Number(s.tips || 0), 0);
-    const opponentTipOut = opponentShifts.reduce((sum, s) => sum + Number(s.tip_out || 0), 0);
-    const opponentNetTips = opponentTips - opponentTipOut;
-    const combined = ownNetTips + opponentNetTips;
+    if (!opponentMember) {
+      const message = document.createElement("p");
+      message.className = "battle-empty-state";
+      message.textContent = "Opponent left the battle";
+      card.append(message);
+    } else {
+      const ownShifts = battle.shifts.filter((s) => s.user_id === currentUser.id);
+      const opponentShifts = battle.shifts.filter((s) => s.user_id === opponentMember.user_id);
+      const ownTips = ownShifts.reduce((sum, s) => sum + Number(s.tips || 0), 0);
+      const ownTipOut = ownShifts.reduce((sum, s) => sum + Number(s.tip_out || 0), 0);
+      const ownNetTips = ownTips - ownTipOut;
+      const opponentTips = opponentShifts.reduce((sum, s) => sum + Number(s.tips || 0), 0);
+      const opponentTipOut = opponentShifts.reduce((sum, s) => sum + Number(s.tip_out || 0), 0);
+      const opponentNetTips = opponentTips - opponentTipOut;
+      const combined = ownNetTips + opponentNetTips;
 
     const tugOfWar = document.createElement("div");
     tugOfWar.className = "battle-tug-of-war";
@@ -1817,35 +1823,36 @@ function createBattleCard(battle) {
       result.innerHTML = `<strong>Tied</strong> at ${money.format(ownNetTips)} in net tips`;
     }
 
-    card.append(tugOfWar, stats, result);
+      card.append(tugOfWar, stats, result);
 
-    if (isActive) {
-      const actions = document.createElement("div");
-      actions.className = "battle-actions";
-      if (isCreator) {
-        const endButton = document.createElement("button");
-        endButton.className = "secondary-button";
-        endButton.textContent = "End battle";
-        endButton.addEventListener("click", () => completeBattle(battle.id));
-        actions.append(endButton);
+      if (isActive) {
+        const actions = document.createElement("div");
+        actions.className = "battle-actions";
+        if (isCreator) {
+          const endButton = document.createElement("button");
+          endButton.className = "secondary-button";
+          endButton.textContent = "End battle";
+          endButton.addEventListener("click", () => completeBattle(battle.id));
+          actions.append(endButton);
+        }
+        const leaveButton = document.createElement("button");
+        leaveButton.className = "secondary-button";
+        leaveButton.textContent = "Leave battle";
+        leaveButton.addEventListener("click", () => leaveBattle(battle.id));
+        actions.append(leaveButton);
+        card.append(actions);
       }
-      const leaveButton = document.createElement("button");
-      leaveButton.className = "secondary-button";
-      leaveButton.textContent = "Leave battle";
-      leaveButton.addEventListener("click", () => leaveBattle(battle.id));
-      actions.append(leaveButton);
-      card.append(actions);
-    }
-    
-    if (isCompleted && isCreator) {
-      const actions = document.createElement("div");
-      actions.className = "battle-actions";
-      const deleteButton = document.createElement("button");
-      deleteButton.className = "secondary-button";
-      deleteButton.textContent = "Delete battle";
-      deleteButton.addEventListener("click", () => deleteBattle(battle.id));
-      actions.append(deleteButton);
-      card.append(actions);
+      
+      if (isCompleted && isCreator) {
+        const actions = document.createElement("div");
+        actions.className = "battle-actions";
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "secondary-button";
+        deleteButton.textContent = "Delete battle";
+        deleteButton.addEventListener("click", () => deleteBattle(battle.id));
+        actions.append(deleteButton);
+        card.append(actions);
+      }
     }
   }
 
